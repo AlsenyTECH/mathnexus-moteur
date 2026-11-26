@@ -61,3 +61,22 @@ def test_dossier_vide_manquant(deux_sites):
 def test_dossier_introuvable(tmp_path):
     with pytest.raises(FileNotFoundError):
         comparer(tmp_path / "rien", tmp_path)
+
+
+def test_fichier_reecrit_aussitot_avec_la_meme_taille(deux_sites):
+    """Comparer, réécrire un fichier tout de suite (même taille), comparer encore : la différence doit être vue."""
+    a, b = deux_sites
+    assert comparer(a, b).identiques()
+    (b / "index.html").write_bytes(b"<p>Accueik</p>\n")
+    assert comparer(a, b).differents == ["index.html"]
+
+
+def test_gros_fichier_lu_par_morceaux(tmp_path):
+    from moteur.comparer import memes_octets
+    x, y = tmp_path / "x", tmp_path / "y"
+    donnees = bytes(range(256)) * 10000          # 2,5 Mo : plusieurs morceaux d'un Mo
+    x.write_bytes(donnees)
+    y.write_bytes(donnees[:-1] + b"\x00")         # seul le dernier octet change
+    assert not memes_octets(x, y)
+    y.write_bytes(donnees)
+    assert memes_octets(x, y)

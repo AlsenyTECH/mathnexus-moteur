@@ -6,7 +6,6 @@ Sert de preuve quand le générateur change sans que le contenu change : migrati
 vers le moteur (M1), montée de version du moteur dans un dépôt de parcours. Tout compte :
 pages, CSS, JS, polices, Pyodide, vidéos, dossiers vides. Une seule différence suffit à échouer.
 """
-import filecmp
 import os
 from dataclasses import dataclass, field
 
@@ -49,6 +48,24 @@ def inventaire(racine):
     return chemins
 
 
+def memes_octets(a, b, bloc=1 << 20):
+    """Vrai si les deux fichiers ont exactement les mêmes octets.
+
+    On lit vraiment les deux fichiers, par morceaux d'un Mo. Pas de filecmp : il garde en cache le
+    résultat selon la taille et la date de modification, et sous Windows un fichier réécrit dans la même
+    seconde avec la même taille paraîtrait inchangé.
+    """
+    if os.path.getsize(a) != os.path.getsize(b):
+        return False
+    with open(a, "rb") as fa, open(b, "rb") as fb:
+        while True:
+            ma, mb = fa.read(bloc), fb.read(bloc)
+            if ma != mb:
+                return False
+            if not ma:
+                return True
+
+
 def comparer(ancien, nouveau):
     for d in (ancien, nouveau):
         if not os.path.isdir(d):
@@ -58,7 +75,6 @@ def comparer(ancien, nouveau):
     for c in sorted(a & b):
         if c.endswith("/"):
             continue
-        # shallow=False : on lit vraiment les deux fichiers, au lieu de se fier à la taille et à la date.
-        if not filecmp.cmp(os.path.join(ancien, c), os.path.join(nouveau, c), shallow=False):
+        if not memes_octets(os.path.join(ancien, c), os.path.join(nouveau, c)):
             ecarts.differents.append(c)
     return ecarts
