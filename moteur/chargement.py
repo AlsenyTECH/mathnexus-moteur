@@ -50,7 +50,7 @@ def _importer(chemin, groupe):
     try:
         spec.loader.exec_module(module)
     except Exception as err:
-        rel = os.path.join("contenu", os.path.basename(chemin))
+        rel = "contenu/" + os.path.basename(chemin)  # même message sous Windows et Linux
         raise ErreurConstruction("Erreur dans %s : %s: %s" % (rel, type(err).__name__, err)) from err
     return module
 

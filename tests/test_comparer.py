@@ -11,8 +11,9 @@ def deux_sites(tmp_path):
     a = tmp_path / "ancien"
     (a / "assets" / "fonts").mkdir(parents=True)
     (a / "videos").mkdir()  # dossier vide : il compte aussi
-    (a / "index.html").write_text("<p>Accueil</p>\n", encoding="utf-8")
-    (a / "assets" / "style.css").write_text("body{}\n", encoding="utf-8")
+    # write_bytes : sous Windows, write_text changerait \n en \r\n.
+    (a / "index.html").write_bytes(b"<p>Accueil</p>\n")
+    (a / "assets" / "style.css").write_bytes(b"body{}\n")
     (a / "assets" / "fonts" / "f.woff2").write_bytes(bytes(range(256)))
     b = tmp_path / "nouveau"
     shutil.copytree(a, b)

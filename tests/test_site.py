@@ -156,10 +156,10 @@ def test_refus_corps_qui_n_est_pas_du_cours(depot, tmp_path):
 
 
 def test_refus_erreur_dans_le_cours(depot, tmp_path):
-    (depot / "contenu" / "partie2.py").write_text("from moteur.blocs import retenir\nCORPS = {'p2-loin': '<p>' % retenir('a', 'b')}\n",
+    (depot / "contenu" / "partie2.py").write_text("from moteur.blocs import retenir\nCORPS = {'p2-loin': '<p>%s</p>' % retenir('a', 'b')}\n",
                                                   encoding="utf-8")
     message = refus(depot, tmp_path)
-    assert message.startswith("Erreur dans contenu/partie2.py : TypeError")
+    assert message.startswith("Erreur dans contenu/partie2.py : TypeError: Retenir est un bloc, pas une chaîne")
 
 
 def test_refus_registre_incoherent(depot, tmp_path):
