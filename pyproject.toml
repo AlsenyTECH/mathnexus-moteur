@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mathnexus-moteur"
+dynamic = ["version"]
+description = "Moteur de contenu des parcours MathNexus : un format, un générateur, trois sorties (site, paquet plateforme, PDF)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENCE"]
+authors = [{ name = "Alseny Diallo (MathNexus)" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+moteur = "moteur.cli:principal"
+
+[tool.setuptools.dynamic]
+version = { attr = "moteur.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["moteur*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
