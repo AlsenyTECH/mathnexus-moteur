@@ -2,21 +2,21 @@
 
     moteur --version
     moteur construire     le site statique        (étape M1)
+    moteur comparer A B   deux sites, octet par octet (étape M1)
     moteur verifier       prérequis, clés stables (étape M2)
     moteur paquet         le paquet plateforme    (étape M3)
     moteur pdf            les PDF                 (étape M5)
 
-À l'étape M0, seules l'aide et la version fonctionnent : chaque sous-commande annonce l'étape
-qui la livrera. argparse (bibliothèque standard) suffit : pas de dépendance à installer.
+Les sous-commandes pas encore livrées annoncent l'étape qui les livrera.
+argparse (bibliothèque standard) suffit : pas de dépendance à installer.
 """
 import argparse
 import sys
 
 from . import __version__
 
-# Sous-commande → (aide affichée, étape du plan qui la livre).
-COMMANDES = {
-    "construire": ("construit le site statique du parcours", "M1"),
+# Sous-commandes pas encore livrées → (aide affichée, étape du plan qui la livre).
+A_VENIR = {
     "verifier": ("vérifie prérequis, clés stables, liens et vidéos", "M2"),
     "paquet": ("produit le paquet pour la plateforme (format 1)", "M3"),
     "pdf": ("produit les PDF au style maison", "M5"),
@@ -24,6 +24,7 @@ COMMANDES = {
 
 # Codes de sortie, pour que les scripts et la CI sachent ce qui s'est passé.
 OK = 0
+ECHEC = 1        # construction refusée, sites différents
 PAS_ENCORE = 3
 
 
@@ -34,18 +35,42 @@ def analyseur():
     )
     p.add_argument("--version", action="version", version=f"mathnexus-moteur {__version__}")
     sous = p.add_subparsers(dest="commande", metavar="commande")
-    for nom, (aide, _etape) in COMMANDES.items():
+
+    c = sous.add_parser("comparer", help="compare deux sites générés, octet par octet",
+                        description="Compare deux sites générés, octet par octet. "
+                                    "Code de sortie 0 s'ils sont identiques, 1 sinon.")
+    c.add_argument("ancien", help="dossier du site de référence")
+    c.add_argument("nouveau", help="dossier du site à comparer")
+
+    for nom, (aide, _etape) in A_VENIR.items():
         sous.add_parser(nom, help=aide, description=aide)
     return p
 
 
+def commande_comparer(args):
+    from .comparer import comparer
+    try:
+        ecarts = comparer(args.ancien, args.nouveau)
+    except FileNotFoundError as err:
+        print("moteur comparer : %s" % err, file=sys.stderr)
+        return ECHEC
+    print(ecarts.rapport())
+    return OK if ecarts.identiques() else ECHEC
+
+
+COMMANDES = {"comparer": commande_comparer}
+
+
 def principal(arguments=None):
     """Point d'entrée de la commande. Renvoie le code de sortie (utile dans les tests)."""
-    args = analyseur().parse_args(arguments)
+    p = analyseur()
+    args = p.parse_args(arguments)
     if args.commande is None:
-        analyseur().print_help()
+        p.print_help()
         return OK
-    _aide, etape = COMMANDES[args.commande]
+    if args.commande in COMMANDES:
+        return COMMANDES[args.commande](args)
+    _aide, etape = A_VENIR[args.commande]
     print(f"« moteur {args.commande} » n'est pas encore disponible : il arrive à l'étape {etape}.",
           file=sys.stderr)
     return PAS_ENCORE

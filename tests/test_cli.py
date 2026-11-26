@@ -1,4 +1,4 @@
-"""Tests de l'étape M0 : la commande existe, donne sa version et annonce les étapes à venir."""
+"""Tests de la commande : version, aide, sous-commandes livrées et à venir."""
 import subprocess
 import sys
 import tomllib
@@ -34,14 +34,14 @@ def test_option_version(capsys):
 def test_sans_commande_affiche_l_aide(capsys):
     assert cli.principal([]) == cli.OK
     sortie = capsys.readouterr().out
-    for nom in cli.COMMANDES:
+    for nom in [*cli.COMMANDES, *cli.A_VENIR]:
         assert nom in sortie
 
 
-@pytest.mark.parametrize("nom", sorted(cli.COMMANDES))
-def test_chaque_commande_annonce_son_etape(nom, capsys):
+@pytest.mark.parametrize("nom", sorted(cli.A_VENIR))
+def test_chaque_commande_a_venir_annonce_son_etape(nom, capsys):
     assert cli.principal([nom]) == cli.PAS_ENCORE
-    _aide, etape = cli.COMMANDES[nom]
+    _aide, etape = cli.A_VENIR[nom]
     assert etape in capsys.readouterr().err
 
 
@@ -57,3 +57,20 @@ def test_python_m_moteur():
                               capture_output=True, text=True, cwd=RACINE)
     assert resultat.returncode == 0
     assert moteur.__version__ in resultat.stdout
+
+
+def test_comparer_identiques_puis_differents(tmp_path, capsys):
+    a, b = tmp_path / "a", tmp_path / "b"
+    a.mkdir(); b.mkdir()
+    (a / "index.html").write_text("x", encoding="utf-8")
+    (b / "index.html").write_text("x", encoding="utf-8")
+    assert cli.principal(["comparer", str(a), str(b)]) == cli.OK
+    assert "Sites identiques." in capsys.readouterr().out
+    (b / "index.html").write_text("y", encoding="utf-8")
+    assert cli.principal(["comparer", str(a), str(b)]) == cli.ECHEC
+    assert "index.html" in capsys.readouterr().out
+
+
+def test_comparer_dossier_introuvable(tmp_path, capsys):
+    assert cli.principal(["comparer", str(tmp_path / "rien"), str(tmp_path)]) == cli.ECHEC
+    assert "introuvable" in capsys.readouterr().err
