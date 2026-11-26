@@ -6,9 +6,11 @@ on:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]   # Alseny travaille sous Windows
         python: ["3.11", "3.13"]
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +24,7 @@ jobs:
       # Ce que fera chaque dépôt de parcours : installer le moteur comme un paquet,
       # dans un environnement neuf, puis appeler la commande `moteur`.
       - name: Installation comme un dépôt de parcours
+        if: runner.os == 'Linux'
         run: |
           python -m venv /tmp/parcours
           /tmp/parcours/bin/pip install .
@@ -29,6 +32,7 @@ jobs:
       # Le modèle (style, JS, MathJax, polices, Pyodide) doit être installé avec le paquet :
       # on construit le parcours d'exemple depuis un autre dossier, avec le moteur installé.
       - name: Construction du parcours d'exemple avec le moteur installé
+        if: runner.os == 'Linux'
         working-directory: /tmp
         run: |
           /tmp/parcours/bin/moteur construire --dossier "$GITHUB_WORKSPACE/tests/exemple" --sortie /tmp/site
