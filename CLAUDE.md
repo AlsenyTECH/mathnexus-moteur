@@ -84,7 +84,7 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
       leur étape, tests, CI, README, licence MIT). Version `0.0.1`, pas encore d'étiquette.
 - [x] **M1** (v0.1.0) : registre, blocs objets, sortie site, modèle commun, `moteur construire` et `moteur comparer`.
       Complexité construit avec le moteur ; site identique à l'ancien `build.py` (43 fichiers, 25 296 175 octets),
-      vérifié par `moteur comparer` et `diff -r`.  tests.
+      vérifié par `moteur comparer` et `diff -r`. 102 tests (Linux et Windows).
 - [ ] M2 : statuts brouillon → vérifié → publié + `cles.lock` + `moteur verifier`.
 - [ ] M3 : sortie paquet au format 1, contrôlée par `lire_paquet`, importée dans la plateforme locale.
 - [ ] M4 : composants partagés + évaluations en données (format suivant, défini d'abord dans la plateforme).
