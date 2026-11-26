@@ -25,7 +25,8 @@ Alseny construit pour apprendre : il lance lui-même le code et les tests. Expli
 ## Stack
 
 - Python ≥ 3.11, **aucune dépendance à l'exécution** (bibliothèque standard : argparse, html.parser, zipfile, json).
-- pytest pour les tests ; CI GitHub Actions sur Python 3.11 et 3.13, avec une installation « comme un dépôt de parcours ».
+- pytest pour les tests ; CI GitHub Actions sur Linux et **Windows** (Alseny travaille sous Windows), Python 3.11 et 3.13,
+  avec une installation « comme un dépôt de parcours » (Linux).
 - Paquet configuré dans `pyproject.toml` (setuptools) ; version lue dans `moteur/__init__.py` (seule source).
 
 ## Commandes
@@ -83,7 +84,7 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
       leur étape, tests, CI, README, licence MIT). Version `0.0.1`, pas encore d'étiquette.
 - [x] **M1** (v0.1.0) : registre, blocs objets, sortie site, modèle commun, `moteur construire` et `moteur comparer`.
       Complexité construit avec le moteur ; site identique à l'ancien `build.py` (43 fichiers, 25 296 175 octets),
-      vérifié par `moteur comparer` et `diff -r`. 100 tests.
+      vérifié par `moteur comparer` et `diff -r`.  tests.
 - [ ] M2 : statuts brouillon → vérifié → publié + `cles.lock` + `moteur verifier`.
 - [ ] M3 : sortie paquet au format 1, contrôlée par `lire_paquet`, importée dans la plateforme locale.
 - [ ] M4 : composants partagés + évaluations en données (format suivant, défini d'abord dans la plateforme).
@@ -107,3 +108,7 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
   de M1). Registre, blocs, réglages, chargement, sortie site, modèle et comparateur livrés ; tests de rendu contre
   les anciennes briques. Complexité migré (PR AlsenyTECH/parcours-complexite#1) : sites identiques. Version 0.1.0 ;
   étiquette à poser par Alseny.
+- 26/11/2026 — v0.1.0 étiquetée par Alseny. CI élargie à Windows : trois défauts corrigés (message d'erreur avec
+  « \ », test de fin de ligne écrit en mode texte, cache de filecmp qui masquait un fichier réécrit dans la même
+  seconde → lecture octet par octet). Version 0.1.1 sur main, étiquette à poser ; Complexité reste sur v0.1.0
+  jusqu'à M2 (la montée de version se prouvera avec moteur comparer).
