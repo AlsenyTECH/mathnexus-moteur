@@ -14,17 +14,32 @@ le moteur à une version épinglée. Une mise à jour du moteur ne casse donc au
 
 ## État
 
-**M0** : squelette. La commande `moteur` existe, donne sa version et annonce l'étape qui livrera chaque
-sous-commande. Plan complet : doc « Moteur de contenu — plan » du projet Claude *Dev · Moteur et plateforme*.
+**M1** (v0.1.0) : la sortie site. Le parcours Complexité est construit par le moteur, et son site est
+identique, octet par octet, à celui de l'ancien générateur. Plan complet : doc « Moteur de contenu — plan »
+du projet Claude *Dev · Moteur et plateforme*.
 
 ## Utiliser le moteur dans un dépôt de parcours
 
 ```bash
-# première étiquette prévue à la fin de M1 ; d'ici là, @main
 pip install "mathnexus-moteur @ git+https://github.com/AlsenyTECH/mathnexus-moteur@v0.1.0"
-moteur --version
-moteur construire      # à partir de M1
+moteur construire                    # construit le site (réglages dans parcours.toml)
+moteur comparer ANCIEN NOUVEAU       # deux sites, octet par octet (preuve qu'une montée de version ne change rien)
 ```
+
+Un dépôt de parcours contient :
+
+```
+parcours.toml          les réglages (voir tests/exemple/parcours.toml, commenté)
+requirements.txt       la version épinglée du moteur
+contenu/registre.py    PARTIES : parties et étapes (from moteur.registre import Etape, Partie)
+contenu/*.py           CORPS[identifiant] = etape(…), écrit avec les briques de moteur.blocs
+contenu/pages.py       facultatif : pages(site) → les pages propres (accueil, outils)
+modele/                facultatif : CSS et JS propres au parcours
+```
+
+Les briques (`retenir`, `preuve`, `atelier`…) renvoient des **objets** : `"<p>…</p>" + video(…)` donne une
+`Suite`. Le cours garde ainsi sa structure, que chaque sortie rend à sa façon. Un bloc ne se met pas dans
+un `%`, une f-string ou un `join` : c'est une erreur, pour que la structure ne se perde jamais en silence.
 
 ## Travailler sur le moteur
 
@@ -38,7 +53,7 @@ moteur --help
 ## Publier une version
 
 1. Changer `__version__` dans `moteur/__init__.py` (par exemple `0.1.0`).
-2. Committer, puis poser l'étiquette correspondante : `git tag v0.1.0 && git push origin v0.1.0`.
+2. Committer, puis poser l'étiquette correspondante : `git tag -a v0.1.0 -m "…" && git push origin v0.1.0`.
 3. Dans chaque dépôt de parcours, monter la version épinglée quand on est prêt.
 
 ## Licence

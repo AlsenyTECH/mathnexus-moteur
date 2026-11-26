@@ -35,25 +35,39 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m pytest
 moteur --help            # ou : python -m moteur --help
+moteur construire --dossier tests/exemple --sortie /tmp/site   # le parcours d'exemple
+moteur comparer ANCIEN NOUVEAU                                 # deux sites, octet par octet
 ```
 
-Publier une version : changer `__version__`, committer, `git tag vX.Y.Z && git push origin vX.Y.Z`.
+Publier une version : changer `__version__`, committer, `git tag -a vX.Y.Z -m "…" && git push origin vX.Y.Z`.
+**Les étiquettes sont posées par Alseny** : les sessions Claude ne peuvent pas pousser d'étiquette (refus 403 du proxy).
 
-## Organisation (cible)
+## Organisation
 
 ```
 moteur/
-  cli.py           la commande `moteur` (construire, verifier, paquet, pdf)
-  registre.py      Parcours > Parties > Étapes, statuts, prérequis          (M1, M2)
-  blocs.py         les briques renvoient des objets                         (M1)
-  controle.py      lire_paquet reprise de la plateforme                     (M3)
-  verifier.py      prérequis, clés stables (cles.lock), liens, vidéos       (M2)
-  sorties/         site.py (M1), paquet.py (M3), latex.py (M5)
-modele/            style commun, site.js, polices, MathJax, Pyodide         (M1)
-composants/        un module JS par composant interactif                    (M4)
-latex/             mathnexus.sty, préambules                                (M5)
+  cli.py           la commande `moteur` : construire, comparer (M1) ; verifier, paquet, pdf annoncés
+  registre.py      Parcours > Parties > Étapes, index, numérotation, prérequis   (M1 ; statuts en M2)
+  blocs.py         les briques renvoient des objets (dataclasses figées), + → Suite, parcourir()  (M1)
+  reglages.py      parcours.toml (tomllib), clés inconnues refusées               (M1)
+  chargement.py    registre, cours (CORPS), pages propres (contenu/pages.py)      (M1)
+  comparer.py      deux sites octet par octet                                      (M1)
+  sorties/site.py  une fonction de rendu par classe de bloc, pages, assets        (M1)
+  modele/          style commun, site.js, outils.js, atelier(-worker).js, mesure.js, vendor/
+                   (MathJax, polices, Pyodide) : installé avec le paquet (package-data)   (M1)
+  controle.py      lire_paquet reprise de la plateforme                           (M3)
+  verifier.py      clés stables (cles.lock), liens, vidéos                        (M2)
+  sorties/         paquet.py (M3), latex.py (M5)
+composants/        un module JS par composant interactif                          (M4)
+latex/             mathnexus.sty, préambules                                      (M5)
 tests/
+  ancien/          copie figée des briques de Complexité : oracle des tests de rendu (ne pas modifier)
+  exemple/         parcours d'exemple complet (parcours.toml commenté), construit par les tests et la CI
 ```
+
+Les JS du modèle portent deux marqueurs remplacés à la copie : `__PREFIXE__` (réglage `prefixe_stockage` :
+tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'` (réglage `message_accueil_vide`).
+`.gitattributes` interdit toute conversion de fin de ligne dans `moteur/modele/` (sites identiques à l'octet).
 
 ## Conventions
 
@@ -67,13 +81,29 @@ tests/
 
 - [x] **M0** : squelette (pyproject, commande `moteur` avec `--version` et l'aide, sous-commandes qui annoncent
       leur étape, tests, CI, README, licence MIT). Version `0.0.1`, pas encore d'étiquette.
-- [ ] M1 : extraction depuis Complexité (registre, blocs, sortie site, style) ; site identique avant/après.
+- [x] **M1** (v0.1.0) : registre, blocs objets, sortie site, modèle commun, `moteur construire` et `moteur comparer`.
+      Complexité construit avec le moteur ; site identique à l'ancien `build.py` (43 fichiers, 25 296 175 octets),
+      vérifié par `moteur comparer` et `diff -r`. 100 tests.
 - [ ] M2 : statuts brouillon → vérifié → publié + `cles.lock` + `moteur verifier`.
 - [ ] M3 : sortie paquet au format 1, contrôlée par `lire_paquet`, importée dans la plateforme locale.
 - [ ] M4 : composants partagés + évaluations en données (format suivant, défini d'abord dans la plateforme).
 - [ ] M5 : PDF LaTeX.
 - [ ] M6 : vidéos Bunny + action GitHub qui envoie le paquet à l'API d'import.
 
+## À reprendre plus tard (repéré pendant M1)
+
+- `modele/site.js` dit « Commencer ce module » : à rendre réglable quand un parcours aura des chapitres.
+- `outils.js` mêle le thème (commun) et la progression de l'accueil : à séparer avec l'accueil générique
+  (migration de Terminale). `animateur.js` (moteur + algorithmes) reste dans Complexité jusqu'à M4.
+- L'archive hors ligne jointe à chaque version (décision de publication) n'est pas encore faite :
+  à ajouter quand un parcours aura sa première étiquette.
+- La construction ne vide pas le dossier de sortie (comme l'ancien build.py) ; en CI il part vide.
+
 ## Journal
 
 - 26/11/2026 — M0 : squelette créé, 10 tests passent sur Python 3.11 et 3.13, installation pip vérifiée dans un environnement neuf.
+- 26/11/2026 — M1 : plan en QCM (blocs objets + Suite stricte ; moteur = socle + atelier/mesure, Complexité garde
+  son CSS, animateur, calculateurs et pages propres ; preuve par `moteur comparer` ; publication par action en fin
+  de M1). Registre, blocs, réglages, chargement, sortie site, modèle et comparateur livrés ; tests de rendu contre
+  les anciennes briques. Complexité migré (PR AlsenyTECH/parcours-complexite#1) : sites identiques. Version 0.1.0 ;
+  étiquette à poser par Alseny.
