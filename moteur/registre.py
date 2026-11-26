@@ -37,6 +37,11 @@ class Etape:
         self.cours = cours
         self.corps = None  # le cours rédigé (un bloc), rempli par le moteur depuis contenu/
 
+    @property
+    def redigee(self):
+        """Vrai si le cours de l'étape est écrit ; sinon la page affiche sa fiche."""
+        return self.corps is not None and self.corps != ""
+
     def __repr__(self):
         return f"Etape({self.id!r})"
 

@@ -1,0 +1,4 @@
+# Les fichiers du modèle sont copiés tels quels dans les sites : aucune conversion de fin de ligne,
+# sinon un site construit sous Windows ne serait plus identique à l'octet près.
+moteur/modele/** -text
+tests/exemple/** -text

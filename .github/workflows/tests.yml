@@ -26,3 +26,12 @@ jobs:
           python -m venv /tmp/parcours
           /tmp/parcours/bin/pip install .
           /tmp/parcours/bin/moteur --version
+      # Le modèle (style, JS, MathJax, polices, Pyodide) doit être installé avec le paquet :
+      # on construit le parcours d'exemple depuis un autre dossier, avec le moteur installé.
+      - name: Construction du parcours d'exemple avec le moteur installé
+        working-directory: /tmp
+        run: |
+          /tmp/parcours/bin/moteur construire --dossier "$GITHUB_WORKSPACE/tests/exemple" --sortie /tmp/site
+          test -f /tmp/site/assets/pyodide/pyodide.asm.wasm
+          test -f /tmp/site/assets/mathjax/tex-svg.js
+          test -f /tmp/site/chapitre-1.html

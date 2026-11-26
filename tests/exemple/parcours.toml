@@ -1,0 +1,55 @@
+# Réglages d'un parcours, lus par « moteur construire ». Ce parcours d'exemple sert aux tests du
+# moteur ; il montre toutes les clés possibles. Seules titre et titre_long sont obligatoires.
+
+[parcours]
+titre = "Parcours Exemple"                  # nom court : barre du haut, sommaire
+titre_long = "Parcours Exemple du moteur"   # fin du titre de chaque page
+sous_titre = "Un parcours pour les tests"
+description = "Parcours d'exemple : il sert aux tests du moteur <et> rien d'autre."
+auteur = "MathNexus"
+annee = 2026
+
+[site]
+sortie = "_site"                 # dossier du site construit (ignoré par Git)
+videos = "videos"                # vidéos du parcours, copiées dans le site
+prefixe_stockage = "exemple"     # clés localStorage : tous les sites partagent alsenytech.github.io
+icone = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"
+message_accueil_vide = "Rien de validé pour l'instant. Commence par la partie 1."
+css = ["modele/exemple.css"]     # ajoutés après le style commun, dans assets/style.css
+js = ["modele/exemple.js"]       # composants propres, copiés dans assets/
+scripts_partie = ["site.js", "atelier.js", "exemple.js", "mesure.js"]   # chargés par les pages de partie
+
+[[site.barre]]                   # liens de la barre des pages propres (accueil, outils)
+lien = "index.html"
+texte = "Accueil"
+
+[[site.barre]]
+lien = "outils.html"
+texte = "Outils"
+
+[[site.sommaire]]                # liens ajoutés au sommaire des pages de partie, après les parties
+lien = "outils.html"
+symbole = "∑"
+texte = "Outils"
+
+[parties]
+nom = "Chapitre"                 # « Chapitre 1 · Étape 1.2 »
+demonstratif = "ce chapitre"     # « Ce chapitre en bref », « Les 2 étapes de ce chapitre »
+complement = "du chapitre"       # « Sommaire du chapitre »
+fichier = "chapitre-{num}.html"
+
+[gabarit]                        # les quatre temps de chaque étape ; le 3ᵉ change selon la discipline
+temps = [
+  { nom = "Comprendre", consigne = "Lis et regarde la vidéo." },
+  { nom = "Démontrer", consigne = "Refais les calculs." },
+  { nom = "Calculer", consigne = "Calcule à la main, puis vérifie." },
+  { nom = "S'exercer", consigne = "Exercices, puis test de sortie." },
+]
+
+[mathjax.macros]                 # macros TeX, écrites telles quelles (chaînes littérales '…')
+N = '\mathbb{N}'
+Z = '\mathbb{Z}'
+R = '\mathbb{R}'
+F = '\mathbb{F}'
+pgcd = '\operatorname{pgcd}'
+cle = '\text{clé}'

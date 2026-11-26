@@ -36,6 +36,11 @@ def analyseur():
     p.add_argument("--version", action="version", version=f"mathnexus-moteur {__version__}")
     sous = p.add_subparsers(dest="commande", metavar="commande")
 
+    c = sous.add_parser("construire", help="construit le site statique du parcours",
+                        description="Construit le site statique du parcours (réglages dans parcours.toml).")
+    c.add_argument("--dossier", default=".", help="racine du dépôt du parcours (par défaut : ici)")
+    c.add_argument("--sortie", help="dossier du site (par défaut : [site] sortie de parcours.toml)")
+
     c = sous.add_parser("comparer", help="compare deux sites générés, octet par octet",
                         description="Compare deux sites générés, octet par octet. "
                                     "Code de sortie 0 s'ils sont identiques, 1 sinon.")
@@ -45,6 +50,18 @@ def analyseur():
     for nom, (aide, _etape) in A_VENIR.items():
         sous.add_parser(nom, help=aide, description=aide)
     return p
+
+
+def commande_construire(args):
+    from .chargement import ErreurConstruction
+    from .sorties.site import avancement, construire
+    try:
+        site, sortie = construire(args.dossier, args.sortie)
+    except ErreurConstruction as err:
+        print(str(err), file=sys.stderr)
+        return ECHEC
+    print(avancement(site, sortie))
+    return OK
 
 
 def commande_comparer(args):
@@ -58,7 +75,7 @@ def commande_comparer(args):
     return OK if ecarts.identiques() else ECHEC
 
 
-COMMANDES = {"comparer": commande_comparer}
+COMMANDES = {"construire": commande_construire, "comparer": commande_comparer}
 
 
 def principal(arguments=None):

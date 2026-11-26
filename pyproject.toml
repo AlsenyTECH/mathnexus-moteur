@@ -25,6 +25,12 @@ version = { attr = "moteur.__version__" }
 [tool.setuptools.packages.find]
 include = ["moteur*"]
 
+# Le style, les JS, MathJax, les polices et Pyodide s'installent avec le moteur :
+# les dépôts de parcours n'en gardent plus de copie.
+[tool.setuptools.package-data]
+moteur = ["modele/*", "modele/**/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+pythonpath = ["."]
