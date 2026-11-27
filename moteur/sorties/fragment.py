@@ -150,6 +150,8 @@ def _entree(e):
     """Une entrée d'exemple de l'animateur : [« légende », valeurs] ou des valeurs seules."""
     if isinstance(e, (list, tuple)) and len(e) == 2 and isinstance(e[0], str):
         legende, valeurs = e
+        if _valeurs(valeurs) in html.escape(legende):   # « L'exemple : 3, 8, 2, 6 » dit déjà les valeurs
+            return html.escape(legende)
         return "%s : %s" % (html.escape(legende), _valeurs(valeurs))
     return _valeurs(e)
 

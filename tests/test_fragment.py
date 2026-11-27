@@ -88,6 +88,11 @@ def test_animateur_montre_les_entrees(rendu):
     assert "<li>L&#x27;exemple : 3, 8, 2, 6</li>" in html and 'data-composant="animateur"' in html
 
 
+def test_animateur_sans_repeter_les_valeurs_deja_dans_la_legende(rendu):
+    html = rendu(B.animateur("anim", "insertion", [["Exemple : 3, 8, 2, 6", [3, 8, 2, 6]]], "Le tri"))
+    assert "<li>Exemple : 3, 8, 2, 6</li>" in html
+
+
 def test_code_sans_bouton_copier(rendu):
     html = rendu(B.code("x = 1"))
     assert "<button" not in html and "<pre>x = 1</pre>" in html
