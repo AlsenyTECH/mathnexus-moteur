@@ -12,8 +12,25 @@ Un dépôt de parcours écrit ses parties dans `contenu/registre.py` :
     ]
 
 Le moteur en fait un `Parcours`, qui indexe les étapes par identifiant, les numérote (« 3.3 »)
-et vérifie les prérequis. Les statuts (brouillon → vérifié → publié) arrivent à l'étape M2.
+et vérifie les prérequis.
+
+Chaque étape a un statut (étape M2 du plan) :
+
+    brouillon   en cours d'écriture (par défaut) : le site affiche sa fiche
+    verifie     cours relu, nombres vérifiés : prête à sortir, le site affiche encore sa fiche
+    publie      le cours sort ; sa clé entre dans cles.lock et ne doit plus jamais disparaître
+
+    E("m3-insertion", "Le tri par insertion", 50, "Objectif…", ["m3-boucles"], statut="publie")
 """
+
+BROUILLON = "brouillon"
+VERIFIE = "verifie"
+PUBLIE = "publie"
+STATUTS = (BROUILLON, VERIFIE, PUBLIE)  # dans l'ordre de la vie d'une étape
+
+
+class ErreurStatut(ValueError):
+    """Statut inconnu : la faute de frappe est signalée dès la lecture du registre."""
 
 
 class Etape:
@@ -25,9 +42,14 @@ class Etape:
     prereq    identifiants des étapes à avoir faites avant
     examen    question d'annale que l'étape prépare, s'il y en a
     cours     partie correspondante du cours de référence, s'il y en a
+    statut    brouillon (par défaut), verifie ou publie ; à donner par son nom : statut="publie"
     """
 
-    def __init__(self, ident, titre, minutes, objectif, prereq=(), examen=None, cours=None):
+    def __init__(self, ident, titre, minutes, objectif, prereq=(), examen=None, cours=None, *,
+                 statut=BROUILLON):
+        if statut not in STATUTS:
+            raise ErreurStatut("étape %s : statut inconnu %r (attendu : %s)"
+                               % (ident, statut, ", ".join(STATUTS)))
         self.id = ident
         self.titre = titre
         self.minutes = minutes
@@ -35,12 +57,18 @@ class Etape:
         self.prereq = list(prereq)
         self.examen = examen
         self.cours = cours
+        self.statut = statut
         self.corps = None  # le cours rédigé (un bloc), rempli par le moteur depuis contenu/
 
     @property
     def redigee(self):
         """Vrai si le cours de l'étape est écrit ; sinon la page affiche sa fiche."""
         return self.corps is not None and self.corps != ""
+
+    @property
+    def publiee(self):
+        """Vrai si le cours de l'étape sort sur le site (et, en M3, dans le paquet)."""
+        return self.statut == PUBLIE
 
     def __repr__(self):
         return f"Etape({self.id!r})"
@@ -112,3 +140,12 @@ class Parcours:
                 elif ordre.index(p) >= i:
                     pbs.append("%s : le prérequis %s vient après" % (e.id, p))
         return pbs
+
+    def verifier_statuts(self):
+        """Liste des problèmes de statut, une fois le cours chargé.
+
+        Une étape vérifiée ou publiée doit avoir son cours écrit : on ne vérifie pas, et on ne
+        publie pas, une page vide. Un brouillon peut avoir un cours (en cours d'écriture) ou non.
+        """
+        return ["%s : statut %s, mais son cours n'est pas écrit" % (e.id, e.statut)
+                for e in self.etapes() if e.statut != BROUILLON and not e.redigee]

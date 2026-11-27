@@ -206,3 +206,18 @@ def test_reglages_minimaux_et_valeurs_par_defaut():
 def test_reglages_refuses(texte, message):
     with pytest.raises(ErreurReglages, match=re.escape(message)):
         lire(texte)
+
+
+def test_refus_statut_inconnu(depot, tmp_path):
+    reg = depot / "contenu" / "registre.py"
+    reg.write_text(reg.read_text(encoding="utf-8").replace('["p1-suite"]),', '["p1-suite"], statut="publié"),'),
+                   encoding="utf-8")
+    assert refus(depot, tmp_path) == ("Erreur dans contenu/registre.py : ErreurStatut: étape p2-loin : "
+                                      "statut inconnu 'publié' (attendu : brouillon, verifie, publie)")
+
+
+def test_refus_publie_sans_cours(depot, tmp_path):
+    reg = depot / "contenu" / "registre.py"
+    reg.write_text(reg.read_text(encoding="utf-8").replace('["p1-suite"]),', '["p1-suite"], statut="publie"),'),
+                   encoding="utf-8")
+    assert refus(depot, tmp_path) == "Statuts :\n  - p2-loin : statut publie, mais son cours n'est pas écrit"
