@@ -98,18 +98,17 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
 - `moteur construire` rend les pages en mémoire, lance `verifier.controler`, lève la première erreur avant
   d'écrire quoi que ce soit.
 
-## État (au 27/11/2026)
+## État (au 27/11/2026, fin de M2)
 
 - [x] **M0** : squelette (pyproject, commande `moteur` avec `--version` et l'aide, sous-commandes qui annoncent
       leur étape, tests, CI, README, licence MIT). Version `0.0.1`, pas encore d'étiquette.
 - [x] **M1** (v0.1.0) : registre, blocs objets, sortie site, modèle commun, `moteur construire` et `moteur comparer`.
       Complexité construit avec le moteur ; site identique à l'ancien `build.py` (43 fichiers, 25 296 175 octets),
       vérifié par `moteur comparer` et `diff -r`. 102 tests (Linux et Windows).
-- [x] **M2 côté moteur** (v0.2.0, branche `m2`) : statuts, sortie site des seules étapes publiées, aperçu
-      `--brouillons`, `cles.lock`, `moteur verifier` (+ `--maj-cles`). Preuve :
-      `test_renommer_une_cle_publiee_fait_echouer_la_construction`. 158 tests.
-      **Reste** : fusion de `m2`, étiquette `v0.2.0` (Alseny), puis Complexité épinglé à v0.2.0 avec ses
-      3 étapes rédigées publiées et site identique (simulé : « Sites identiques »).
+- [x] **M2** (v0.2.0, `ea5fd39`) : statuts, sortie site des seules étapes publiées, aperçu `--brouillons`,
+      `cles.lock`, `moteur verifier` (+ `--maj-cles`). Preuve : `test_renommer_une_cle_publiee_fait_echouer_la_construction`
+      (158 tests, Linux et Windows) ; Complexité épinglé à v0.2.0 avec ses 3 étapes publiées : site identique à celui de
+      v0.1.1 (PR parcours-complexite#3, actions vertes ; à fusionner après #2).
 - [ ] M3 : sortie paquet au format 1, contrôlée par `lire_paquet`, importée dans la plateforme locale.
 - [ ] M4 : composants partagés + évaluations en données (format suivant, défini d'abord dans la plateforme).
 - [ ] M5 : PDF LaTeX.
@@ -145,3 +144,7 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
   `_apercu/`). Complexité passé à v0.1.1 (PR parcours-complexite#2, sites identiques). E1 statuts, E2 sortie site
   et aperçu, E3 `cles.lock` (preuve : renommer une clé publiée fait échouer la construction), E4 `moteur verifier`,
   CI qui lance verifier sur l'exemple. Version 0.2.0 ; étiquette à poser par Alseny ; puis E5 dans Complexité.
+- 27/11/2026 — PR #1 fusionnée, v0.2.0 étiquetée par Alseny (une première étiquette posée avant la fusion visait
+  l'ancien main : supprimée et reposée sur `ea5fd39`). Retenir : **fusionner d'abord, étiqueter ensuite**, et vérifier
+  `git --no-pager log -1 --oneline vX.Y.Z`. Complexité : PR #3 (v0.2.0, 3 étapes publiées, cles.lock), sites identiques.
+  **M2 terminé.** Prochaine tâche : M3 (sortie paquet au format 1, contrôlée par `lire_paquet`).
