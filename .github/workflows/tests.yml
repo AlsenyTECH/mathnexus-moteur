@@ -40,3 +40,15 @@ jobs:
           test -f /tmp/site/assets/pyodide/pyodide.asm.wasm
           test -f /tmp/site/assets/mathjax/tex-svg.js
           test -f /tmp/site/chapitre-1.html
+
+  # Le contrat avec la plateforme : moteur/controle.py doit rester identique à son paquet.py (branche main).
+  # Si cette tâche échoue, la plateforme a changé son format ou son contrôle : voir moteur/contrat.py.
+  contrat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: controle.py identique au paquet.py de la plateforme
+        run: python -m moteur.contrat

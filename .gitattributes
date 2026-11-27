@@ -2,3 +2,7 @@
 # sinon un site construit sous Windows ne serait plus identique à l'octet près.
 moteur/modele/** -text
 tests/exemple/** -text
+
+# moteur/controle.py est une copie octet pour octet de paquet.py (plateforme) : aucune conversion
+# de fin de ligne, sinon son empreinte ne correspondrait plus sous Windows.
+moteur/controle.py -text
