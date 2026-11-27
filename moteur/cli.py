@@ -40,6 +40,9 @@ def analyseur():
                         description="Construit le site statique du parcours (réglages dans parcours.toml).")
     c.add_argument("--dossier", default=".", help="racine du dépôt du parcours (par défaut : ici)")
     c.add_argument("--sortie", help="dossier du site (par défaut : [site] sortie de parcours.toml)")
+    c.add_argument("--brouillons", action="store_true",
+                   help="aperçu pour relire : sort aussi le cours des étapes en brouillon ou vérifiées, "
+                        "avec un bandeau, dans _apercu/ (à ne jamais publier)")
 
     c = sous.add_parser("comparer", help="compare deux sites générés, octet par octet",
                         description="Compare deux sites générés, octet par octet. "
@@ -56,7 +59,7 @@ def commande_construire(args):
     from .chargement import ErreurConstruction
     from .sorties.site import avancement, construire
     try:
-        site, sortie = construire(args.dossier, args.sortie)
+        site, sortie = construire(args.dossier, args.sortie, args.brouillons)
     except ErreurConstruction as err:
         print(str(err), file=sys.stderr)
         return ECHEC
