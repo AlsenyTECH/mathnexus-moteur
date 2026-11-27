@@ -21,6 +21,10 @@ Chaque étape a un statut (étape M2 du plan) :
     publie      le cours sort ; sa clé entre dans cles.lock et ne doit plus jamais disparaître
 
     E("m3-insertion", "Le tri par insertion", 50, "Objectif…", ["m3-boucles"], statut="publie")
+
+Et un niveau d'accès sur la plateforme (étape M3), « inscrit » par défaut :
+
+    E("m0-deux-algos", "Deux algorithmes", 25, "Objectif…", statut="publie", acces="public")
 """
 
 BROUILLON = "brouillon"
@@ -28,9 +32,13 @@ VERIFIE = "verifie"
 PUBLIE = "publie"
 STATUTS = (BROUILLON, VERIFIE, PUBLIE)  # dans l'ordre de la vie d'une étape
 
+# Niveaux d'accès sur la plateforme (format de paquet 1) : public = vitrine sans compte,
+# inscrit = tout élève validé d'une classe rattachée (par défaut), premium = offre payante.
+ACCES = ("public", "inscrit", "premium")
+
 
 class ErreurStatut(ValueError):
-    """Statut inconnu : la faute de frappe est signalée dès la lecture du registre."""
+    """Statut ou accès inconnu : la faute de frappe est signalée dès la lecture du registre."""
 
 
 class Etape:
@@ -43,13 +51,17 @@ class Etape:
     examen    question d'annale que l'étape prépare, s'il y en a
     cours     partie correspondante du cours de référence, s'il y en a
     statut    brouillon (par défaut), verifie ou publie ; à donner par son nom : statut="publie"
+    acces     sur la plateforme : public, inscrit (par défaut) ou premium ; par son nom : acces="public"
     """
 
     def __init__(self, ident, titre, minutes, objectif, prereq=(), examen=None, cours=None, *,
-                 statut=BROUILLON):
+                 statut=BROUILLON, acces="inscrit"):
         if statut not in STATUTS:
             raise ErreurStatut("étape %s : statut inconnu %r (attendu : %s)"
                                % (ident, statut, ", ".join(STATUTS)))
+        if acces not in ACCES:
+            raise ErreurStatut("étape %s : accès inconnu %r (attendu : %s)"
+                               % (ident, acces, ", ".join(ACCES)))
         self.id = ident
         self.titre = titre
         self.minutes = minutes
@@ -58,6 +70,7 @@ class Etape:
         self.examen = examen
         self.cours = cours
         self.statut = statut
+        self.acces = acces
         self.corps = None  # le cours rédigé (un bloc), rempli par le moteur depuis contenu/
 
     @property
