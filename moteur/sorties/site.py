@@ -12,11 +12,18 @@ import shutil
 from importlib import resources
 
 from .. import blocs as B
+from .. import verifier as V
 from ..chargement import ErreurConstruction, charger
+from ..registre import BROUILLON, PUBLIE, STATUTS, VERIFIE
 
 THEME_BTN = '<button type="button" class="theme-btn" aria-pressed="false">Thème sombre</button>'
 
 # Fichiers JavaScript du moteur, copiés dans assets/ avec les réglages du parcours injectés.
+# Aperçu des brouillons (moteur construire --brouillons) : dossier par défaut, bandeau et pastille.
+DOSSIER_APERCU = "_apercu"
+BANDEAUX = {BROUILLON: "brouillon, non publié", VERIFIE: "vérifié, pas encore publié"}
+PASTILLES = {BROUILLON: "brouillon", VERIFIE: "vérifiée"}
+
 JS_MOTEUR = ("site.js", "atelier.js", "atelier-worker.js", "mesure.js", "outils.js")
 
 
@@ -275,12 +282,21 @@ class Site:
     """Ce dont les pages ont besoin. Les pages propres d'un parcours (contenu/pages.py) le reçoivent
     et utilisent ses fonctions : coquille, barre, pied, lien, rendre."""
 
-    def __init__(self, depot):
+    def __init__(self, depot, apercu=False):
         self.depot = depot
+        self.apercu = apercu  # vrai pour « moteur construire --brouillons » : jamais publié
         self.reglages = depot.reglages
         self.parcours = depot.parcours
         self.dossier_videos = os.path.join(depot.racine, self.reglages.videos)
         self.rendre = Rendu(self.reglages.noms_temps, self.dossier_videos)
+        self.resultat = None  # résultat des contrôles (moteur.verifier), rempli par construire()
+
+    def montre_cours(self, e):
+        """Vrai si le cours de l'étape sort dans cette construction.
+
+        Site normal : les étapes publiées seulement. Aperçu (--brouillons) : tout le cours écrit.
+        """
+        return e.publiee or (self.apercu and e.redigee)
 
     # — morceaux communs —
     def mathjax(self):
@@ -355,8 +371,13 @@ window.MathJax = {
         return '<div class="fiche"><dl>%s</dl></div>' % lignes
 
     def section_etape(self, e, p):
-        if e.redigee:
+        if self.montre_cours(e):
             corps = self.rendre(e.corps)
+            if not e.publiee:
+                # Aperçu seulement : on réutilise le style de l'encadré « à venir » pour ne pas
+                # toucher au style commun (le site publié doit rester identique à l'octet).
+                corps = ('<div class="a-venir"><p class="lab">Aperçu — %s</p></div>'
+                         % BANDEAUX[e.statut]) + corps
         else:
             corps = ('<div class="a-venir"><p class="lab">Étape en cours de rédaction</p>'
                      '<p>Le cours arrive. En attendant, la fiche ci-dessus dit ce qu\'il faudra savoir faire, '
@@ -373,8 +394,12 @@ window.MathJax = {
         g = self.reglages
         lignes = []
         for e in p.etapes:
-            statut = ('<span class="pastille">rédigée</span>' if e.redigee
-                      else '<span class="rien">à venir</span>')
+            if e.publiee:
+                statut = '<span class="pastille">rédigée</span>'
+            elif self.montre_cours(e):
+                statut = '<span class="pastille">%s</span>' % PASTILLES[e.statut]
+            else:
+                statut = '<span class="rien">à venir</span>'
             lignes.append('<tr><td><a href="#%s">%s %s</a></td><td>%s</td><td>%s</td></tr>'
                           % (e.id, self.parcours.numero(e.id), html.escape(e.titre), html.escape(e.objectif), statut))
         howto = "".join('<div><p class="num">%d</p><p><strong>%s.</strong> %s</p></div>' % (i + 1, nom, consigne)
@@ -431,24 +456,6 @@ window.MathJax = {
 # Construction
 # ─────────────────────────────────────────────────────────────────────────────
 
-def verifier_videos(site):
-    """Chaque vidéo citée dans le cours existe dans le dossier des vidéos."""
-    pbs = []
-    for e in site.parcours.etapes():
-        if not e.redigee:
-            continue
-        cites = []
-        for n in B.parcourir(e.corps):
-            if isinstance(n, B.Video):
-                cites.append(n.fichier)
-            elif isinstance(n, str):
-                cites += re.findall(r'src="videos/([^"]+)"', n)
-        for v in cites:
-            if not os.path.exists(os.path.join(site.dossier_videos, v)):
-                pbs.append("%s : vidéo manquante videos/%s" % (e.id, v))
-    return pbs
-
-
 def _injecter(contenu, reglages):
     """Les réglages du parcours dans un JS du moteur : préfixe de stockage, message de l'accueil."""
     contenu = contenu.replace(b"__PREFIXE__", reglages.prefixe_stockage.encode("ascii"))
@@ -487,28 +494,40 @@ def copier_videos(site, sortie):
         shutil.copytree(source, cible, dirs_exist_ok=True)
 
 
-def construire(racine=".", sortie=None):
-    """Construit le site du parcours. Renvoie (site, dossier de sortie) ; lève ErreurConstruction."""
-    depot = charger(racine)
-    site = Site(depot)
-    pbs = verifier_videos(site)
-    if pbs:
-        raise ErreurConstruction("Vidéos", pbs)
-    sortie = os.path.abspath(sortie or os.path.join(depot.racine, depot.reglages.sortie))
-    os.makedirs(sortie, exist_ok=True)
-    copier_videos(site, sortie)
-    copier_assets(site, sortie)
-    open(os.path.join(sortie, ".nojekyll"), "w").close()
-
+def rendre_pages(site):
+    """Toutes les pages du site, en mémoire : {nom de fichier : HTML}. Rien n'est écrit."""
     pages = {}
-    if depot.pages:
-        pages.update(depot.pages(site))
+    if site.depot.pages:
+        pages.update(site.depot.pages(site))
     parties = site.parcours.parties
     for k, p in enumerate(parties):
         if p.fichier in pages:
             raise ErreurConstruction("contenu/pages.py écrit %s, qui est la page d'une partie" % p.fichier)
         suivant = parties[k + 1].fichier if k + 1 < len(parties) else None
         pages[p.fichier] = site.page_partie(p, suivant)
+    return pages
+
+
+def construire(racine=".", sortie=None, brouillons=False):
+    """Construit le site du parcours. Renvoie (site, dossier de sortie) ; lève ErreurConstruction.
+
+    brouillons  aperçu : sort aussi le cours des étapes en brouillon ou vérifiées, avec un bandeau,
+                dans _apercu/ par défaut. Pour relire chez soi ; ce dossier ne se publie jamais.
+    """
+    depot = charger(racine)
+    site = Site(depot, apercu=brouillons)
+    pages = rendre_pages(site)
+    # Les mêmes contrôles que « moteur verifier » : la première erreur arrête tout, avant d'écrire.
+    site.resultat = V.controler(site, pages)
+    erreur = site.resultat.erreur()
+    if erreur:
+        raise erreur
+    defaut = DOSSIER_APERCU if brouillons else depot.reglages.sortie
+    sortie = os.path.abspath(sortie or os.path.join(depot.racine, defaut))
+    os.makedirs(sortie, exist_ok=True)
+    copier_videos(site, sortie)
+    copier_assets(site, sortie)
+    open(os.path.join(sortie, ".nojekyll"), "w").close()
     for nom, contenu in pages.items():
         with open(os.path.join(sortie, nom), "w", encoding="utf-8") as f:
             f.write(contenu)
@@ -516,15 +535,22 @@ def construire(racine=".", sortie=None):
 
 
 def avancement(site, sortie):
-    """Le résumé affiché après la construction."""
+    """Le résumé affiché après la construction : où en est chaque statut, partie par partie."""
     etapes = site.parcours.etapes()
     total = len(etapes)
-    red = sum(1 for e in etapes if e.redigee)
+    nb = {st: sum(1 for e in etapes if e.statut == st) for st in STATUTS}
+    brouillons_rediges = sum(1 for e in etapes if e.statut == BROUILLON and e.redigee)
     nb_pages = len([n for n in os.listdir(sortie) if n.endswith(".html")])
-    lignes = ["Site construit dans %s : %d pages, %d étapes, %d rédigée(s) (%d %%)"
-              % (sortie, nb_pages, total, red, round(100 * red / total) if total else 0)]
+    titre = "Aperçu (avec les brouillons, à ne pas publier)" if site.apercu else "Site"
+    lignes = ["%s construit dans %s : %d pages, %d étapes" % (titre, sortie, nb_pages, total),
+              "  %d publiée(s) (%d %%), %d vérifiée(s), %d brouillon(s) dont %d rédigé(s)"
+              % (nb[PUBLIE], round(100 * nb[PUBLIE] / total) if total else 0, nb[VERIFIE], nb[BROUILLON],
+                 brouillons_rediges)]
     nom = site.reglages.nom_partie.lower()
     for p in site.parcours.parties:
-        lignes.append("  %s %d : %2d/%2d  %s" % (nom, p.num, sum(1 for e in p.etapes if e.redigee),
-                                                 len(p.etapes), p.titre))
+        lignes.append("  %s %d : %2d/%2d publiée(s)  %s" % (nom, p.num, sum(1 for e in p.etapes if e.publiee),
+                                                            len(p.etapes), p.titre))
+    if site.resultat and site.resultat.avertissements:
+        lignes.append("%d avertissement(s) : lance « moteur verifier » pour les voir"
+                      % len(site.resultat.avertissements))
     return "\n".join(lignes)

@@ -35,6 +35,7 @@ jobs:
         if: runner.os == 'Linux'
         working-directory: /tmp
         run: |
+          /tmp/parcours/bin/moteur verifier --dossier "$GITHUB_WORKSPACE/tests/exemple"
           /tmp/parcours/bin/moteur construire --dossier "$GITHUB_WORKSPACE/tests/exemple" --sortie /tmp/site
           test -f /tmp/site/assets/pyodide/pyodide.asm.wasm
           test -f /tmp/site/assets/mathjax/tex-svg.js

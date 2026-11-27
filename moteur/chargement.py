@@ -107,4 +107,7 @@ def charger(racine="."):
                 parcours.etape(eid).corps = corps
     finally:
         sys.path.remove(contenu)
+    pbs = parcours.verifier_statuts()
+    if pbs:
+        raise ErreurConstruction("Statuts", pbs)
     return DepotParcours(racine, reglages, parcours, pages)

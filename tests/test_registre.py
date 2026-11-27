@@ -62,3 +62,50 @@ def test_identifiant_en_double():
     assert "identifiant d'étape en double : a" in p.verifier()
     # L'index garde la première étape : celle qu'on trouve en lisant le parcours dans l'ordre.
     assert p.etape("a").titre == "A"
+
+
+# — statuts (M2) —
+
+import pytest
+
+from moteur.registre import BROUILLON, PUBLIE, STATUTS, VERIFIE, ErreurStatut
+
+
+def test_statut_brouillon_par_defaut():
+    e = E("a", "A", 10, "o")
+    assert e.statut == BROUILLON
+    assert not e.publiee
+
+
+def test_les_trois_statuts():
+    assert STATUTS == ("brouillon", "verifie", "publie")
+    assert E("a", "A", 10, "o", statut=VERIFIE).statut == "verifie"
+    assert E("a", "A", 10, "o", statut=PUBLIE).publiee
+
+
+@pytest.mark.parametrize("statut", ["publié", "vérifié", "Publie", "publiee", ""])
+def test_statut_inconnu_refuse(statut):
+    with pytest.raises(ErreurStatut) as err:
+        E("m3-insertion", "A", 10, "o", statut=statut)
+    assert str(err.value) == ("étape m3-insertion : statut inconnu %r (attendu : brouillon, verifie, publie)"
+                              % statut)
+
+
+def test_statut_se_donne_par_son_nom():
+    # 8ᵉ argument positionnel refusé : « statut= » se lit sans ambiguïté dans le registre.
+    with pytest.raises(TypeError):
+        E("a", "A", 10, "o", [], None, None, "publie")
+
+
+def test_verifie_ou_publie_sans_cours_refuse():
+    p = Parcours([Partie(0, "T", "R", [
+        E("a", "A", 10, "o"),                       # brouillon sans cours : normal
+        E("b", "B", 10, "o", statut=VERIFIE),
+        E("c", "C", 10, "o", statut=PUBLIE),
+    ])])
+    assert p.verifier_statuts() == ["b : statut verifie, mais son cours n'est pas écrit",
+                                    "c : statut publie, mais son cours n'est pas écrit"]
+    p.etape("b").corps = "<p>relu</p>"
+    p.etape("c").corps = "<p>publié</p>"
+    p.etape("a").corps = "<p>en cours</p>"         # brouillon avec cours : normal aussi
+    assert p.verifier_statuts() == []
