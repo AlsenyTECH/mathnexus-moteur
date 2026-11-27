@@ -36,9 +36,14 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m pytest
 moteur --help            # ou : python -m moteur --help
+moteur verifier --dossier tests/exemple                        # tous les contrôles, sans construire
 moteur construire --dossier tests/exemple --sortie /tmp/site   # le parcours d'exemple
+moteur construire --brouillons                                 # aperçu avec le cours non publié (_apercu/)
 moteur comparer ANCIEN NOUVEAU                                 # deux sites, octet par octet
+moteur verifier --maj-cles                                     # ajoute les clés publiées à cles.lock
 ```
+
+Sous Windows (invite de commandes) : `py -m venv .venv`, puis `.venv\Scripts\activate`.
 
 Publier une version : changer `__version__`, committer, `git tag -a vX.Y.Z -m "…" && git push origin vX.Y.Z`.
 **Les étiquettes sont posées par Alseny** : les sessions Claude ne peuvent pas pousser d'étiquette (refus 403 du proxy).
@@ -47,23 +52,26 @@ Publier une version : changer `__version__`, committer, `git tag -a vX.Y.Z -m "�
 
 ```
 moteur/
-  cli.py           la commande `moteur` : construire, comparer (M1) ; verifier, paquet, pdf annoncés
-  registre.py      Parcours > Parties > Étapes, index, numérotation, prérequis   (M1 ; statuts en M2)
+  cli.py           la commande `moteur` : construire, comparer (M1), verifier (M2) ; paquet, pdf annoncés
+  registre.py      Parcours > Parties > Étapes, index, numérotation, prérequis (M1) ; statuts (M2)
   blocs.py         les briques renvoient des objets (dataclasses figées), + → Suite, parcourir()  (M1)
   reglages.py      parcours.toml (tomllib), clés inconnues refusées               (M1)
-  chargement.py    registre, cours (CORPS), pages propres (contenu/pages.py)      (M1)
+  chargement.py    registre, cours (CORPS), pages propres ; refuse registre et statuts incohérents
+  cles.py          cles.lock : lire, écrire, controler, mettre_a_jour (ajoute seulement)   (M2)
+  verifier.py      contrôles partagés par verifier et construire : cles.lock, vidéos, liens ;
+                   avertissements (prérequis non publié, vidéo manquante d'un brouillon)    (M2)
   comparer.py      deux sites octet par octet                                      (M1)
-  sorties/site.py  une fonction de rendu par classe de bloc, pages, assets        (M1)
+  sorties/site.py  une fonction de rendu par classe de bloc, pages, assets (M1) ; cours des seules
+                   étapes publiées, aperçu --brouillons (M2)
   modele/          style commun, site.js, outils.js, atelier(-worker).js, mesure.js, vendor/
                    (MathJax, polices, Pyodide) : installé avec le paquet (package-data)   (M1)
   controle.py      lire_paquet reprise de la plateforme                           (M3)
-  verifier.py      clés stables (cles.lock), liens, vidéos                        (M2)
   sorties/         paquet.py (M3), latex.py (M5)
 composants/        un module JS par composant interactif                          (M4)
 latex/             mathnexus.sty, préambules                                      (M5)
 tests/
   ancien/          copie figée des briques de Complexité : oracle des tests de rendu (ne pas modifier)
-  exemple/         parcours d'exemple complet (parcours.toml commenté), construit par les tests et la CI
+  exemple/         parcours d'exemple complet (parcours.toml commenté, cles.lock), construit par les tests et la CI
 ```
 
 Les JS du modèle portent deux marqueurs remplacés à la copie : `__PREFIXE__` (réglage `prefixe_stockage` :
@@ -78,14 +86,30 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
 - Paquets reproductibles : même contenu → même archive (dates et ordre des fichiers ZIP fixés).
 - Les clés d'étapes publiées ne changent jamais (`cles.lock`, à partir de M2).
 
-## État (au 26/11/2026)
+## Statuts et clés publiées (M2)
+
+- `E(…, statut="brouillon" | "verifie" | "publie")`, brouillon par défaut, donné par son nom. Seul le cours des
+  étapes publiées sort ; les autres affichent leur fiche. Vérifié ou publié sans cours : refusé.
+- `Etape.publiee` décide de ce qui sort ; `Etape.redigee` veut dire « cours écrit ». `site.montre_cours(e)` :
+  publiée, ou rédigée dans l'aperçu (`--brouillons`, bandeau réutilisant `.a-venir` : style commun inchangé).
+- `cles.lock` (texte, une clé par ligne, triées, fins de ligne Unix) : la construction refuse une clé absente du
+  registre, une étape publiée absente de la liste, des publiées sans fichier, une clé hors du format plateforme.
+  Seul `moteur verifier --maj-cles` l'écrit (ajoute seulement). Dépublier est permis.
+- `moteur construire` rend les pages en mémoire, lance `verifier.controler`, lève la première erreur avant
+  d'écrire quoi que ce soit.
+
+## État (au 27/11/2026)
 
 - [x] **M0** : squelette (pyproject, commande `moteur` avec `--version` et l'aide, sous-commandes qui annoncent
       leur étape, tests, CI, README, licence MIT). Version `0.0.1`, pas encore d'étiquette.
 - [x] **M1** (v0.1.0) : registre, blocs objets, sortie site, modèle commun, `moteur construire` et `moteur comparer`.
       Complexité construit avec le moteur ; site identique à l'ancien `build.py` (43 fichiers, 25 296 175 octets),
       vérifié par `moteur comparer` et `diff -r`. 102 tests (Linux et Windows).
-- [ ] M2 : statuts brouillon → vérifié → publié + `cles.lock` + `moteur verifier`.
+- [x] **M2 côté moteur** (v0.2.0, branche `m2`) : statuts, sortie site des seules étapes publiées, aperçu
+      `--brouillons`, `cles.lock`, `moteur verifier` (+ `--maj-cles`). Preuve :
+      `test_renommer_une_cle_publiee_fait_echouer_la_construction`. 158 tests.
+      **Reste** : fusion de `m2`, étiquette `v0.2.0` (Alseny), puis Complexité épinglé à v0.2.0 avec ses
+      3 étapes rédigées publiées et site identique (simulé : « Sites identiques »).
 - [ ] M3 : sortie paquet au format 1, contrôlée par `lire_paquet`, importée dans la plateforme locale.
 - [ ] M4 : composants partagés + évaluations en données (format suivant, défini d'abord dans la plateforme).
 - [ ] M5 : PDF LaTeX.
@@ -99,6 +123,7 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
 - L'archive hors ligne jointe à chaque version (décision de publication) n'est pas encore faite :
   à ajouter quand un parcours aura sa première étiquette.
 - La construction ne vide pas le dossier de sortie (comme l'ancien build.py) ; en CI il part vide.
+- `moteur verifier` ne contrôle pas les liens des brouillons, ni les liens vers des fichiers (vidéos, images).
 
 ## Journal
 
@@ -115,3 +140,8 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
 - 27/11/2026 — v0.1.1 étiquetée par Alseny. PR Complexité #1 fusionnée ; site publié par l'action, construit avec le moteur
   v0.1.0. **M1 terminé.** Prochaine tâche : M2 (statuts, `cles.lock`, `moteur verifier`), avec le passage de Complexité
   à v0.1.1 prouvé par `moteur comparer`.
+- 27/11/2026 — M2 : plan en QCM (statuts dans le registre ; cles.lock en texte, écrit par `moteur verifier --maj-cles`,
+  la construction lit et refuse ; verifier = socle complet avec avertissements ; aperçu `--brouillons` dans
+  `_apercu/`). Complexité passé à v0.1.1 (PR parcours-complexite#2, sites identiques). E1 statuts, E2 sortie site
+  et aperçu, E3 `cles.lock` (preuve : renommer une clé publiée fait échouer la construction), E4 `moteur verifier`,
+  CI qui lance verifier sur l'exemple. Version 0.2.0 ; étiquette à poser par Alseny ; puis E5 dans Complexité.

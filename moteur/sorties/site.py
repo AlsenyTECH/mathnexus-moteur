@@ -12,7 +12,7 @@ import shutil
 from importlib import resources
 
 from .. import blocs as B
-from .. import cles as C
+from .. import verifier as V
 from ..chargement import ErreurConstruction, charger
 from ..registre import BROUILLON, PUBLIE, STATUTS, VERIFIE
 
@@ -289,6 +289,7 @@ class Site:
         self.parcours = depot.parcours
         self.dossier_videos = os.path.join(depot.racine, self.reglages.videos)
         self.rendre = Rendu(self.reglages.noms_temps, self.dossier_videos)
+        self.resultat = None  # résultat des contrôles (moteur.verifier), rempli par construire()
 
     def montre_cours(self, e):
         """Vrai si le cours de l'étape sort dans cette construction.
@@ -455,28 +456,6 @@ window.MathJax = {
 # Construction
 # ─────────────────────────────────────────────────────────────────────────────
 
-def verifier_videos(site):
-    """Chaque vidéo citée dans le cours d'une étape publiée existe dans le dossier des vidéos.
-
-    Un brouillon peut attendre sa vidéo, même dans l'aperçu : « moteur verifier » le signalera
-    comme avertissement (E4), sans bloquer la construction.
-    """
-    pbs = []
-    for e in site.parcours.etapes():
-        if not e.publiee:
-            continue
-        cites = []
-        for n in B.parcourir(e.corps):
-            if isinstance(n, B.Video):
-                cites.append(n.fichier)
-            elif isinstance(n, str):
-                cites += re.findall(r'src="videos/([^"]+)"', n)
-        for v in cites:
-            if not os.path.exists(os.path.join(site.dossier_videos, v)):
-                pbs.append("%s : vidéo manquante videos/%s" % (e.id, v))
-    return pbs
-
-
 def _injecter(contenu, reglages):
     """Les réglages du parcours dans un JS du moteur : préfixe de stockage, message de l'accueil."""
     contenu = contenu.replace(b"__PREFIXE__", reglages.prefixe_stockage.encode("ascii"))
@@ -515,6 +494,20 @@ def copier_videos(site, sortie):
         shutil.copytree(source, cible, dirs_exist_ok=True)
 
 
+def rendre_pages(site):
+    """Toutes les pages du site, en mémoire : {nom de fichier : HTML}. Rien n'est écrit."""
+    pages = {}
+    if site.depot.pages:
+        pages.update(site.depot.pages(site))
+    parties = site.parcours.parties
+    for k, p in enumerate(parties):
+        if p.fichier in pages:
+            raise ErreurConstruction("contenu/pages.py écrit %s, qui est la page d'une partie" % p.fichier)
+        suivant = parties[k + 1].fichier if k + 1 < len(parties) else None
+        pages[p.fichier] = site.page_partie(p, suivant)
+    return pages
+
+
 def construire(racine=".", sortie=None, brouillons=False):
     """Construit le site du parcours. Renvoie (site, dossier de sortie) ; lève ErreurConstruction.
 
@@ -523,32 +516,18 @@ def construire(racine=".", sortie=None, brouillons=False):
     """
     depot = charger(racine)
     site = Site(depot, apercu=brouillons)
-    try:
-        cles_lues = C.lire(depot.racine)
-    except C.ErreurCles as err:
-        raise ErreurConstruction(str(err)) from None
-    pbs = C.controler(depot.parcours, cles_lues)
-    if pbs:
-        raise ErreurConstruction("Clés publiées (cles.lock)", pbs)
-    pbs = verifier_videos(site)
-    if pbs:
-        raise ErreurConstruction("Vidéos", pbs)
+    pages = rendre_pages(site)
+    # Les mêmes contrôles que « moteur verifier » : la première erreur arrête tout, avant d'écrire.
+    site.resultat = V.controler(site, pages)
+    erreur = site.resultat.erreur()
+    if erreur:
+        raise erreur
     defaut = DOSSIER_APERCU if brouillons else depot.reglages.sortie
     sortie = os.path.abspath(sortie or os.path.join(depot.racine, defaut))
     os.makedirs(sortie, exist_ok=True)
     copier_videos(site, sortie)
     copier_assets(site, sortie)
     open(os.path.join(sortie, ".nojekyll"), "w").close()
-
-    pages = {}
-    if depot.pages:
-        pages.update(depot.pages(site))
-    parties = site.parcours.parties
-    for k, p in enumerate(parties):
-        if p.fichier in pages:
-            raise ErreurConstruction("contenu/pages.py écrit %s, qui est la page d'une partie" % p.fichier)
-        suivant = parties[k + 1].fichier if k + 1 < len(parties) else None
-        pages[p.fichier] = site.page_partie(p, suivant)
     for nom, contenu in pages.items():
         with open(os.path.join(sortie, nom), "w", encoding="utf-8") as f:
             f.write(contenu)
@@ -571,4 +550,7 @@ def avancement(site, sortie):
     for p in site.parcours.parties:
         lignes.append("  %s %d : %2d/%2d publiée(s)  %s" % (nom, p.num, sum(1 for e in p.etapes if e.publiee),
                                                             len(p.etapes), p.titre))
+    if site.resultat and site.resultat.avertissements:
+        lignes.append("%d avertissement(s) : lance « moteur verifier » pour les voir"
+                      % len(site.resultat.avertissements))
     return "\n".join(lignes)

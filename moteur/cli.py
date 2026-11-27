@@ -3,7 +3,7 @@
     moteur --version
     moteur construire     le site statique        (étape M1)
     moteur comparer A B   deux sites, octet par octet (étape M1)
-    moteur verifier       prérequis, clés stables (étape M2)
+    moteur verifier       tous les contrôles, sans construire (étape M2)
     moteur paquet         le paquet plateforme    (étape M3)
     moteur pdf            les PDF                 (étape M5)
 
@@ -17,7 +17,6 @@ from . import __version__
 
 # Sous-commandes pas encore livrées → (aide affichée, étape du plan qui la livre).
 A_VENIR = {
-    "verifier": ("vérifie prérequis, clés stables, liens et vidéos", "M2"),
     "paquet": ("produit le paquet pour la plateforme (format 1)", "M3"),
     "pdf": ("produit les PDF au style maison", "M5"),
 }
@@ -50,6 +49,13 @@ def analyseur():
     c.add_argument("ancien", help="dossier du site de référence")
     c.add_argument("nouveau", help="dossier du site à comparer")
 
+    c = sous.add_parser("verifier", help="contrôle le parcours sans construire (registre, statuts, clés, vidéos, liens)",
+                        description="Lance tous les contrôles de la construction sans rien construire. "
+                                    "Code de sortie 0 sans erreur (même avec des avertissements), 1 sinon.")
+    c.add_argument("--dossier", default=".", help="racine du dépôt du parcours (par défaut : ici)")
+    c.add_argument("--maj-cles", action="store_true",
+                   help="ajoute à cles.lock les clés des étapes publiées qui manquent (n'en retire jamais)")
+
     for nom, (aide, _etape) in A_VENIR.items():
         sous.add_parser(nom, help=aide, description=aide)
     return p
@@ -78,7 +84,33 @@ def commande_comparer(args):
     return OK if ecarts.identiques() else ECHEC
 
 
-COMMANDES = {"construire": commande_construire, "comparer": commande_comparer}
+def commande_verifier(args):
+    from . import cles
+    from .chargement import ErreurConstruction, charger
+    from .sorties.site import Site, rendre_pages
+    from .verifier import controler
+    try:
+        depot = charger(args.dossier)
+        if args.maj_cles:
+            try:
+                ajoutees = cles.mettre_a_jour(depot.racine, depot.parcours)
+                print("cles.lock : %s" % ("ajoutée(s) : " + ", ".join(ajoutees) if ajoutees else "rien à ajouter"))
+            except cles.ErreurCles:
+                pass  # fichier illisible : le contrôle ci-dessous le signale
+        site = Site(depot)
+        resultat = controler(site, rendre_pages(site))
+    except ErreurConstruction as err:
+        print("Erreurs (la construction sera refusée) :\n  " + str(err).replace("\n", "\n  "))
+        return ECHEC
+    etapes = depot.parcours.etapes()
+    nb = {st: sum(1 for e in etapes if e.statut == st) for st in ("publie", "verifie", "brouillon")}
+    print("moteur verifier : %d étapes (%d publiée(s), %d vérifiée(s), %d brouillon(s))"
+          % (len(etapes), nb["publie"], nb["verifie"], nb["brouillon"]))
+    print(resultat.rapport())
+    return ECHEC if resultat.erreurs else OK
+
+
+COMMANDES = {"construire": commande_construire, "comparer": commande_comparer, "verifier": commande_verifier}
 
 
 def principal(arguments=None):
