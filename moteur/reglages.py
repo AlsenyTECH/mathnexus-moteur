@@ -4,8 +4,13 @@ tomllib fait partie de la bibliothèque standard depuis Python 3.11 : pas de dé
 Une clé inconnue est refusée : une faute de frappe ne doit pas passer en silence.
 Voir tests/exemple/parcours.toml pour un fichier complet et commenté.
 """
+import re
 import tomllib
 from dataclasses import dataclass, field
+
+# Mêmes règles que la plateforme (moteur/controle.py) : le paquet serait refusé sinon.
+SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,59}$")
+CYCLES = ("lycee", "prepa", "universite")
 
 TEMPS_PAR_DEFAUT = (
     ("Comprendre", "Lis, regarde la vidéo, essaie les exemples."),
@@ -35,8 +40,12 @@ class Reglages:
     description: str = ""
     auteur: str = "MathNexus"
     annee: int = 2026
+    slug: str = ""          # identité sur la plateforme (paquet, M3) : stable, la progression y est accrochée
+    matiere: str = ""       # « Informatique », « Mathématiques »…
+    cycle: str = ""         # lycee, prepa ou universite
     # [site]
     sortie: str = "_site"
+    url: str = ""           # adresse publique du site (https://…/) : vidéos et liens relatifs du paquet
     videos: str = "videos"
     prefixe_stockage: str = "parcours"
     icone: str = ""
@@ -64,8 +73,9 @@ class Reglages:
 # table TOML → { clé TOML : attribut de Reglages }
 _TABLES = {
     "parcours": {"titre": "titre", "titre_long": "titre_long", "sous_titre": "sous_titre",
-                 "description": "description", "auteur": "auteur", "annee": "annee"},
-    "site": {"sortie": "sortie", "videos": "videos", "prefixe_stockage": "prefixe_stockage",
+                 "description": "description", "auteur": "auteur", "annee": "annee",
+                 "slug": "slug", "matiere": "matiere", "cycle": "cycle"},
+    "site": {"sortie": "sortie", "url": "url", "videos": "videos", "prefixe_stockage": "prefixe_stockage",
              "icone": "icone", "message_accueil_vide": "message_accueil_vide", "css": "css",
              "js": "js", "scripts_partie": "scripts_partie", "barre": "barre", "sommaire": "sommaire"},
     "parties": {"nom": "nom_partie", "demonstratif": "demonstratif", "complement": "complement",
@@ -118,6 +128,17 @@ def lire(texte, nom="parcours.toml"):
     prefixe = valeurs.get("prefixe_stockage", "parcours")
     if not prefixe.replace("-", "").replace("_", "").isalnum() or not prefixe.isascii():
         raise ErreurReglages("%s : [site] prefixe_stockage : lettres, chiffres, - et _ seulement" % nom)
+    if "slug" in valeurs and not SLUG.match(str(valeurs["slug"])):
+        raise ErreurReglages("%s : [parcours] slug « %s » invalide (minuscules, chiffres et tirets, "
+                             "60 caractères au plus)" % (nom, valeurs["slug"]))
+    if "cycle" in valeurs and valeurs["cycle"] not in CYCLES:
+        raise ErreurReglages("%s : [parcours] cycle « %s » invalide (attendu : %s)"
+                             % (nom, valeurs["cycle"], ", ".join(CYCLES)))
+    if "url" in valeurs:
+        url = str(valeurs["url"])
+        if not url.startswith("https://") or '"' in url or " " in url:
+            raise ErreurReglages("%s : [site] url doit être une adresse https:// (sans espace ni guillemet)" % nom)
+        valeurs["url"] = url if url.endswith("/") else url + "/"
     return Reglages(**valeurs)
 
 

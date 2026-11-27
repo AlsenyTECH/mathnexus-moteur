@@ -1,5 +1,6 @@
 # Réglages d'un parcours, lus par « moteur construire ». Ce parcours d'exemple sert aux tests du
-# moteur ; il montre toutes les clés possibles. Seules titre et titre_long sont obligatoires.
+# moteur ; il montre toutes les clés possibles. Seules titre et titre_long sont obligatoires
+# (slug, matiere et cycle le deviennent pour « moteur paquet »).
 
 [parcours]
 titre = "Parcours Exemple"                  # nom court : barre du haut, sommaire
@@ -8,9 +9,13 @@ sous_titre = "Un parcours pour les tests"
 description = "Parcours d'exemple : il sert aux tests du moteur <et> rien d'autre."
 auteur = "MathNexus"
 annee = 2026
+slug = "exemple-moteur"                     # identité sur la plateforme (moteur paquet) : ne plus la changer
+matiere = "Mathématiques"                   # matière affichée par la plateforme
+cycle = "universite"                        # lycee, prepa ou universite
 
 [site]
 sortie = "_site"                 # dossier du site construit (ignoré par Git)
+url = "https://alsenytech.github.io/exemple/"   # adresse publique : vidéos et liens relatifs du paquet
 videos = "videos"                # vidéos du parcours, copiées dans le site
 prefixe_stockage = "exemple"     # clés localStorage : tous les sites partagent alsenytech.github.io
 icone = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"

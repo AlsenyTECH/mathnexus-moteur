@@ -41,6 +41,8 @@ moteur construire --dossier tests/exemple --sortie /tmp/site   # le parcours d'e
 moteur construire --brouillons                                 # aperçu avec le cours non publié (_apercu/)
 moteur comparer ANCIEN NOUVEAU                                 # deux sites, octet par octet
 moteur verifier --maj-cles                                     # ajoute les clés publiées à cles.lock
+moteur paquet --dossier tests/exemple --sortie /tmp/p.zip      # le paquet plateforme (format 1)
+python -m moteur.contrat                                       # controle.py = paquet.py de la plateforme ?
 ```
 
 Sous Windows (invite de commandes) : `py -m venv .venv`, puis `.venv\Scripts\activate`.
@@ -52,10 +54,10 @@ Publier une version : changer `__version__`, committer, `git tag -a vX.Y.Z -m "�
 
 ```
 moteur/
-  cli.py           la commande `moteur` : construire, comparer (M1), verifier (M2) ; paquet, pdf annoncés
-  registre.py      Parcours > Parties > Étapes, index, numérotation, prérequis (M1) ; statuts (M2)
+  cli.py           la commande `moteur` : construire, comparer (M1), verifier (M2), paquet (M3) ; pdf annoncé
+  registre.py      Parcours > Parties > Étapes, index, numérotation, prérequis (M1) ; statuts (M2) ; acces (M3)
   blocs.py         les briques renvoient des objets (dataclasses figées), + → Suite, parcourir()  (M1)
-  reglages.py      parcours.toml (tomllib), clés inconnues refusées               (M1)
+  reglages.py      parcours.toml (tomllib), clés inconnues refusées (M1) ; slug, matiere, cycle, [site] url (M3)
   chargement.py    registre, cours (CORPS), pages propres ; refuse registre et statuts incohérents
   cles.py          cles.lock : lire, écrire, controler, mettre_a_jour (ajoute seulement)   (M2)
   verifier.py      contrôles partagés par verifier et construire : cles.lock, vidéos, liens ;
@@ -65,8 +67,12 @@ moteur/
                    étapes publiées, aperçu --brouillons (M2)
   modele/          style commun, site.js, outils.js, atelier(-worker).js, mesure.js, vendor/
                    (MathJax, polices, Pyodide) : installé avec le paquet (package-data)   (M1)
-  controle.py      lire_paquet reprise de la plateforme                           (M3)
-  sorties/         paquet.py (M3), latex.py (M5)
+  controle.py      COPIE EXACTE de mathnexus-plateforme/backend/contenus/paquet.py : ne jamais la modifier ici (M3)
+  contrat.py       empreinte et commit de cette copie ; `python -m moteur.contrat` la compare à la plateforme (M3)
+  sorties/fragment.py  rendu sans script d'une étape (composants statiques, vidéos et liens vers [site] url,
+                   macros TeX développées)                                         (M3)
+  sorties/paquet.py    manifeste, ZIP reproductible, passage obligatoire dans lire_paquet, `moteur paquet` (M3)
+  sorties/latex.py     PDF                                                         (M5)
 composants/        un module JS par composant interactif                          (M4)
 latex/             mathnexus.sty, préambules                                      (M5)
 tests/
@@ -85,6 +91,8 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
 - Chaque étape livre une preuve testable (voir le plan) ; les tests passent avant de pousser.
 - Paquets reproductibles : même contenu → même archive (dates et ordre des fichiers ZIP fixés).
 - Les clés d'étapes publiées ne changent jamais (`cles.lock`, à partir de M2).
+- `moteur/controle.py` ne se modifie pas : si la plateforme change `paquet.py`, la tâche CI « contrat » échoue ;
+  relire le changement, recopier le fichier, mettre à jour `EMPREINTE` et `COMMIT` dans `contrat.py`, adapter le moteur.
 
 ## Statuts et clés publiées (M2)
 
@@ -98,7 +106,26 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
 - `moteur construire` rend les pages en mémoire, lance `verifier.controler`, lève la première erreur avant
   d'écrire quoi que ce soit.
 
-## État (au 27/11/2026, fin de M2)
+## Paquet plateforme (M3)
+
+Décisions du 27/11/2026 (QCM) :
+- **seules les étapes publiées** sortent ; une partie sans étape publiée est omise ; aucune publiée → refus ;
+- **identité** dans `[parcours]` : `slug`, `matiere`, `cycle` (facultatifs pour le site, exigés par `moteur paquet`) ;
+  titre plateforme = `titre_long`, description = `description` ; clé de partie = `<nom de partie>-<num>` (`module-3`),
+  titre de partie = « Module 3 · titre » ;
+- **accès** dans le registre : `E(…, acces="public" | "inscrit" | "premium")`, `inscrit` par défaut ; **durée** = `minutes` ;
+- **contrat** : `controle.py` copie octet pour octet (`.gitattributes` : `-text`), test d'empreinte, tâche CI `contrat` ;
+- **ZIP stocké** (sans compression), entrées datées du 1980-01-01, `manifeste.json` puis le reste trié, système Unix,
+  droits 644 : mêmes octets sous Windows et Linux (test à empreinte figée `test_archive_type_meme_octets_sur_toute_machine`) ;
+- **vidéos et liens relatifs** → site public (`[site] url`) ; sans `url`, refus ; macros TeX développées (KaTeX côté plateforme) ;
+- composants statiques : quatre temps en sections `<h3>`, QCM avec réponse dans `<details>` (pas de `data-bonne`),
+  atelier (consigne, code de départ, corrigé ; tests cachés absents), animateur (entrées d'exemple), mesure (consigne),
+  tous avec `data-composant` et la mention « Version statique » — interactifs en M4.
+
+`moteur paquet` lance d'abord les contrôles du site (`verifier.controler`), puis rend les fragments, écrit le ZIP en mémoire,
+le passe dans `lire_paquet` et n'écrit le fichier que s'il est accepté (`_paquet/<slug>.zip`, ignoré par Git).
+
+## État (au 27/11/2026, M3 côté moteur)
 
 - [x] **M0** : squelette (pyproject, commande `moteur` avec `--version` et l'aide, sous-commandes qui annoncent
       leur étape, tests, CI, README, licence MIT). Version `0.0.1`, pas encore d'étiquette.
@@ -109,7 +136,12 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
       `cles.lock`, `moteur verifier` (+ `--maj-cles`). Preuve : `test_renommer_une_cle_publiee_fait_echouer_la_construction`
       (158 tests, Linux et Windows) ; Complexité épinglé à v0.2.0 avec ses 3 étapes publiées : site identique à celui de
       v0.1.1 (PR parcours-complexite#3, actions vertes ; à fusionner après #2).
-- [ ] M3 : sortie paquet au format 1, contrôlée par `lire_paquet`, importée dans la plateforme locale.
+- [~] **M3** (v0.3.0, à étiqueter) : `moteur paquet`, `controle.py` + contrat, rendu fragment, accès et identité.
+      Preuves : `test_chaque_paquet_passe_lire_paquet`, `test_paquet_refuse_fait_echouer_la_construction`,
+      `test_deux_constructions_meme_empreinte` (243 tests). Essai sur Complexité (réglages ajoutés en local) : paquet
+      de 83 Ko accepté, importé par `importer_paquet` dans une plateforme locale (SQLite), réimport refusé (« identique ») ;
+      site de Complexité identique entre v0.2.0 et la branche. Reste : fusion, étiquette `v0.3.0`, Complexité épinglé,
+      import par Alseny sous Windows.
 - [ ] M4 : composants partagés + évaluations en données (format suivant, défini d'abord dans la plateforme).
 - [ ] M5 : PDF LaTeX.
 - [ ] M6 : vidéos Bunny + action GitHub qui envoie le paquet à l'API d'import.
@@ -123,6 +155,11 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
   à ajouter quand un parcours aura sa première étiquette.
 - La construction ne vide pas le dossier de sortie (comme l'ancien build.py) ; en CI il part vide.
 - `moteur verifier` ne contrôle pas les liens des brouillons, ni les liens vers des fichiers (vidéos, images).
+- (M3) La plateforme n'a pas encore de style pour toutes les classes des fragments (`preuve`, `demo`, `master`,
+  `examen`, `atelier`, `anim`, `mesure`, `qcm`, `temps`, `statique`) : à faire côté plateforme, avec M4.
+- (M3) `construire_paquet` de la plateforme date encore les entrées au moment présent : à corriger côté plateforme.
+- (M3) Les liens du cours vers une autre étape (`module-3.html#m3-…`) mènent au site public, pas à l'étape sur la
+  plateforme : à revoir quand le lecteur saura résoudre une clé d'étape.
 
 ## Journal
 
@@ -148,3 +185,7 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
   l'ancien main : supprimée et reposée sur `ea5fd39`). Retenir : **fusionner d'abord, étiqueter ensuite**, et vérifier
   `git --no-pager log -1 --oneline vX.Y.Z`. Complexité : PR #3 (v0.2.0, 3 étapes publiées, cles.lock), sites identiques.
   **M2 terminé.** Prochaine tâche : M3 (sortie paquet au format 1, contrôlée par `lire_paquet`).
+- 27/11/2026 — M3 : plan en QCM (voir « Paquet plateforme »). P1 `controle.py` (copie de paquet.py au commit `30be916`)
+  et tâche CI `contrat` ; P2 `slug`/`matiere`/`cycle`/`[site] url`, `acces` dans le registre ; P3 rendu fragment ;
+  P4 `moteur paquet` (ZIP stocké reproductible, `lire_paquet` obligatoire). P5 version 0.3.0, README. Essai complet
+  sur Complexité et import dans une plateforme locale avant la PR. Étiquette `v0.3.0` à poser par Alseny après la fusion.

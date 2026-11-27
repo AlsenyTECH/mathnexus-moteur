@@ -319,7 +319,7 @@ def test_renommer_une_cle_publiee_fait_echouer_la_construction(depot, tmp_path):
 
 def test_supprimer_une_etape_publiee_fait_echouer_la_construction(depot, tmp_path):
     remplacer(depot / "contenu" / "registre.py",
-              'E("p1-depart", "Le départ", 20, "Savoir commencer.", statut="publie"),', "")
+              'E("p1-depart", "Le départ", 20, "Savoir commencer.", statut="publie", acces="public"),', "")
     remplacer(depot / "contenu" / "registre.py", '["p1-depart"], ', "")
     (depot / "contenu" / "partie1.py").write_text("CORPS = {}\n", encoding="utf-8")
     assert "la clé publiée p1-depart a disparu du registre" in refus(depot, tmp_path)

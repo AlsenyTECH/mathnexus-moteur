@@ -17,7 +17,6 @@ from . import __version__
 
 # Sous-commandes pas encore livrées → (aide affichée, étape du plan qui la livre).
 A_VENIR = {
-    "paquet": ("produit le paquet pour la plateforme (format 1)", "M3"),
     "pdf": ("produit les PDF au style maison", "M5"),
 }
 
@@ -55,6 +54,13 @@ def analyseur():
     c.add_argument("--dossier", default=".", help="racine du dépôt du parcours (par défaut : ici)")
     c.add_argument("--maj-cles", action="store_true",
                    help="ajoute à cles.lock les clés des étapes publiées qui manquent (n'en retire jamais)")
+
+    c = sous.add_parser("paquet", help="produit le paquet pour la plateforme (format 1)",
+                        description="Produit le paquet du parcours pour la plateforme (format 1) : manifeste.json + "
+                                    "un fragment par étape publiée. Le paquet passe le contrôle de la plateforme "
+                                    "(lire_paquet) ; s'il est refusé, rien n'est écrit et le code de sortie vaut 1.")
+    c.add_argument("--dossier", default=".", help="racine du dépôt du parcours (par défaut : ici)")
+    c.add_argument("--sortie", help="fichier .zip à écrire (par défaut : _paquet/<slug>.zip)")
 
     for nom, (aide, _etape) in A_VENIR.items():
         sous.add_parser(nom, help=aide, description=aide)
@@ -110,7 +116,22 @@ def commande_verifier(args):
     return ECHEC if resultat.erreurs else OK
 
 
-COMMANDES = {"construire": commande_construire, "comparer": commande_comparer, "verifier": commande_verifier}
+def commande_paquet(args):
+    from .chargement import ErreurConstruction
+    from .sorties.paquet import construire, resume
+    try:
+        paquet, chemin, resultat = construire(args.dossier, args.sortie)
+    except ErreurConstruction as err:
+        print(str(err), file=sys.stderr)
+        return ECHEC
+    print(resume(paquet, chemin))
+    if resultat.avertissements:
+        print("Avertissements (à regarder, ne bloquent pas) :\n" + "\n".join("  - " + a for a in resultat.avertissements))
+    return OK
+
+
+COMMANDES = {"construire": commande_construire, "comparer": commande_comparer, "verifier": commande_verifier,
+             "paquet": commande_paquet}
 
 
 def principal(arguments=None):
