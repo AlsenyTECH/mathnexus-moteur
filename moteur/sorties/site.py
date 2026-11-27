@@ -12,6 +12,7 @@ import shutil
 from importlib import resources
 
 from .. import blocs as B
+from .. import cles as C
 from ..chargement import ErreurConstruction, charger
 from ..registre import BROUILLON, PUBLIE, STATUTS, VERIFIE
 
@@ -522,6 +523,13 @@ def construire(racine=".", sortie=None, brouillons=False):
     """
     depot = charger(racine)
     site = Site(depot, apercu=brouillons)
+    try:
+        cles_lues = C.lire(depot.racine)
+    except C.ErreurCles as err:
+        raise ErreurConstruction(str(err)) from None
+    pbs = C.controler(depot.parcours, cles_lues)
+    if pbs:
+        raise ErreurConstruction("Clés publiées (cles.lock)", pbs)
     pbs = verifier_videos(site)
     if pbs:
         raise ErreurConstruction("Vidéos", pbs)

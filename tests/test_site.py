@@ -234,6 +234,9 @@ def rediger_p1_suite(depot, statut):
         reg = depot / "contenu" / "registre.py"
         reg.write_text(reg.read_text(encoding="utf-8").replace('cours="Chapitre 1"),', 'cours="Chapitre 1", statut="%s"),' % statut),
                        encoding="utf-8")
+    if statut == "publie":
+        with open(depot / "cles.lock", "a", encoding="utf-8") as f:
+            f.write("p1-suite\n")
 
 
 def section(page, eid):
@@ -293,3 +296,70 @@ def test_video_manquante_dans_un_brouillon_ne_bloque_pas(depot, tmp_path):
         encoding="utf-8")
     construire(depot, tmp_path / "site")
     construire(depot, tmp_path / "apercu", brouillons=True)
+
+
+# — cles.lock (M2, E3) : une clé publiée ne disparaît jamais —
+
+def remplacer(fichier, ancien, nouveau):
+    fichier.write_text(fichier.read_text(encoding="utf-8").replace(ancien, nouveau), encoding="utf-8")
+
+
+def test_renommer_une_cle_publiee_fait_echouer_la_construction(depot, tmp_path):
+    """La preuve de M2. p1-depart est publiée ; on la renomme partout (registre, prérequis, cours) :
+    le registre reste cohérent, seul cles.lock voit que la clé publiée a disparu."""
+    remplacer(depot / "contenu" / "registre.py", '"p1-depart"', '"p1-commencer"')
+    remplacer(depot / "contenu" / "partie1.py", '"p1-depart"', '"p1-commencer"')
+    assert refus(depot, tmp_path) == (
+        "Clés publiées (cles.lock) :\n"
+        "  - la clé publiée p1-depart a disparu du registre (étape supprimée ou renommée) : une clé publiée "
+        "ne change jamais, remets l'étape p1-depart dans contenu/registre.py\n"
+        "  - p1-commencer est publiée mais n'est pas dans cles.lock : lance « moteur verifier --maj-cles »")
+    assert not (tmp_path / "site").exists()                          # rien n'est écrit
+
+
+def test_supprimer_une_etape_publiee_fait_echouer_la_construction(depot, tmp_path):
+    remplacer(depot / "contenu" / "registre.py",
+              'E("p1-depart", "Le départ", 20, "Savoir commencer.", statut="publie"),', "")
+    remplacer(depot / "contenu" / "registre.py", '["p1-depart"], ', "")
+    (depot / "contenu" / "partie1.py").write_text("CORPS = {}\n", encoding="utf-8")
+    assert "la clé publiée p1-depart a disparu du registre" in refus(depot, tmp_path)
+
+
+def test_la_commande_construire_echoue_aussi(depot, capsys):
+    remplacer(depot / "contenu" / "registre.py", '"p1-depart"', '"p1-commencer"')
+    remplacer(depot / "contenu" / "partie1.py", '"p1-depart"', '"p1-commencer"')
+    assert cli.principal(["construire", "--dossier", str(depot)]) == cli.ECHEC
+    assert "la clé publiée p1-depart a disparu du registre" in capsys.readouterr().err
+
+
+def test_publier_sans_ajouter_la_cle_refuse(depot, tmp_path):
+    rediger_p1_suite(depot, "verifie")
+    remplacer(depot / "contenu" / "registre.py", 'statut="verifie"', 'statut="publie"')
+    assert refus(depot, tmp_path) == ("Clés publiées (cles.lock) :\n  - p1-suite est publiée mais n'est pas "
+                                      "dans cles.lock : lance « moteur verifier --maj-cles »")
+
+
+def test_publie_sans_cles_lock_refuse(depot, tmp_path):
+    (depot / "cles.lock").unlink()
+    assert refus(depot, tmp_path) == ("Clés publiées (cles.lock) :\n  - des étapes sont publiées mais cles.lock "
+                                      "n'existe pas : lance « moteur verifier --maj-cles »")
+
+
+def test_sans_etape_publiee_cles_lock_facultatif(depot, tmp_path):
+    (depot / "cles.lock").unlink()
+    remplacer(depot / "contenu" / "registre.py", ', statut="publie"', "")
+    construire(depot, tmp_path / "site")
+
+
+def test_depublier_reste_permis(depot, tmp_path):
+    # p1-depart repasse en brouillon : sa clé reste dans cles.lock et l'étape dans le registre.
+    remplacer(depot / "contenu" / "registre.py", ', statut="publie"', "")
+    construire(depot, tmp_path / "site")
+    assert "Étape en cours de rédaction" in section(lire_page(tmp_path / "site", "chapitre-1.html"), "p1-depart")
+
+
+def test_cles_lock_illisible_refuse(depot, tmp_path):
+    with open(depot / "cles.lock", "a", encoding="utf-8") as f:
+        f.write("M3 Insertion\n")
+    assert refus(depot, tmp_path) == ("cles.lock, ligne 6 : 'M3 Insertion' n'est pas une clé "
+                                      "(minuscules, chiffres et -, 60 au plus)")
