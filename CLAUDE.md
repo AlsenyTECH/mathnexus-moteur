@@ -125,7 +125,7 @@ Décisions du 27/11/2026 (QCM) :
 `moteur paquet` lance d'abord les contrôles du site (`verifier.controler`), puis rend les fragments, écrit le ZIP en mémoire,
 le passe dans `lire_paquet` et n'écrit le fichier que s'il est accepté (`_paquet/<slug>.zip`, ignoré par Git).
 
-## État (au 27/11/2026, M3 côté moteur)
+## État (au 27/11/2026, fin de M3)
 
 - [x] **M0** : squelette (pyproject, commande `moteur` avec `--version` et l'aide, sous-commandes qui annoncent
       leur étape, tests, CI, README, licence MIT). Version `0.0.1`, pas encore d'étiquette.
@@ -136,12 +136,13 @@ le passe dans `lire_paquet` et n'écrit le fichier que s'il est accepté (`_paqu
       `cles.lock`, `moteur verifier` (+ `--maj-cles`). Preuve : `test_renommer_une_cle_publiee_fait_echouer_la_construction`
       (158 tests, Linux et Windows) ; Complexité épinglé à v0.2.0 avec ses 3 étapes publiées : site identique à celui de
       v0.1.1 (PR parcours-complexite#3, actions vertes ; à fusionner après #2).
-- [~] **M3** (v0.3.0, à étiqueter) : `moteur paquet`, `controle.py` + contrat, rendu fragment, accès et identité.
+- [x] **M3** (v0.3.0, `35ba059`) : `moteur paquet`, `controle.py` + contrat, rendu fragment, accès et identité.
       Preuves : `test_chaque_paquet_passe_lire_paquet`, `test_paquet_refuse_fait_echouer_la_construction`,
-      `test_deux_constructions_meme_empreinte` (243 tests). Essai sur Complexité (réglages ajoutés en local) : paquet
-      de 83 Ko accepté, importé par `importer_paquet` dans une plateforme locale (SQLite), réimport refusé (« identique ») ;
-      site de Complexité identique entre v0.2.0 et la branche. Reste : fusion, étiquette `v0.3.0`, Complexité épinglé,
-      import par Alseny sous Windows.
+      `test_deux_constructions_meme_empreinte` (243 tests, Linux et Windows, tâche `contrat` verte). Complexité épinglé
+      à v0.3.0 (PR parcours-complexite#4) : site identique à celui de v0.2.0 ; paquet de 83 166 octets, empreinte
+      `b65da349…05391` **identique sous Windows et sous Linux** ; importé par Alseny avec `importer_paquet` dans sa
+      plateforme locale (Windows, SQLite) → « complexite-algorithmes v1 (Brouillon) : 3 étapes » ; réimport refusé
+      (« identique à la version 1 »).
 - [ ] M4 : composants partagés + évaluations en données (format suivant, défini d'abord dans la plateforme).
 - [ ] M5 : PDF LaTeX.
 - [ ] M6 : vidéos Bunny + action GitHub qui envoie le paquet à l'API d'import.
@@ -189,3 +190,9 @@ le passe dans `lire_paquet` et n'écrit le fichier que s'il est accepté (`_paqu
   et tâche CI `contrat` ; P2 `slug`/`matiere`/`cycle`/`[site] url`, `acces` dans le registre ; P3 rendu fragment ;
   P4 `moteur paquet` (ZIP stocké reproductible, `lire_paquet` obligatoire). P5 version 0.3.0, README. Essai complet
   sur Complexité et import dans une plateforme locale avant la PR. Étiquette `v0.3.0` à poser par Alseny après la fusion.
+- 27/11/2026 — PR #2 fusionnée, v0.3.0 étiquetée par Alseny sur le commit de fusion `35ba059`. Complexité : PR #4
+  (v0.3.0, réglages, 0.1 en public, paquet construit deux fois et joint par l'action), actions vertes. Sous Windows :
+  même empreinte que sous Linux, deux constructions identiques (`fc`), import dans la plateforme locale réussi, réimport
+  refusé. Note Windows : `importer_paquet` se lance depuis `mathnexus-plateforme\backend` avec son propre `.venv`
+  (un venv par dépôt) et `set DJANGO_DEBUG=1`. **M3 terminé.** Prochaine tâche : M4 (composants partagés + évaluations
+  en données ; format suivant défini d'abord dans la plateforme).
