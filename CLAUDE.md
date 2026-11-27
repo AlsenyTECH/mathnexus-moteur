@@ -112,3 +112,6 @@ tous les sites partagent l'origine alsenytech.github.io) et `'__ACCUEIL_VIDE__'`
   « \ », test de fin de ligne écrit en mode texte, cache de filecmp qui masquait un fichier réécrit dans la même
   seconde → lecture octet par octet). Version 0.1.1 sur main, étiquette à poser ; Complexité reste sur v0.1.0
   jusqu'à M2 (la montée de version se prouvera avec moteur comparer).
+- 27/11/2026 — v0.1.1 étiquetée par Alseny. PR Complexité #1 fusionnée ; site publié par l'action, construit avec le moteur
+  v0.1.0. **M1 terminé.** Prochaine tâche : M2 (statuts, `cles.lock`, `moteur verifier`), avec le passage de Complexité
+  à v0.1.1 prouvé par `moteur comparer`.
